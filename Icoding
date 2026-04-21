@@ -199,11 +199,12 @@ Examples:
 ## E. Output & Delivery Rules
 
 When creating or updating a downloadable artifact:
-
-1. Publish in canvas also
-2. Provide download link
-3. Verify the final linked file itself before posting the link
-4. Re-open or re-check the exact downloadable file and confirm at least:
+mandatory steps:
+1. Provide download link
+2. Verify the final linked file itself before posting the link
+3. Re-open or re-check the exact downloadable file and confirm at least:
+when steps 1-3 in #E: are done move to step 4 in #E:
+4. Publish in canvas also
 
    * filename
    * version/build marker
