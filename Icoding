@@ -5,10 +5,11 @@ This update introduces a mandatory requirement:
 •	If missing → must be added or explicitly handled
 ________________________________________
 GENERAL INSTRUCTIONS HEADER (FOR ALL MODES)
+For GENERAL INSTRUCTIONS in this chat, before doing anything else, read and apply the file as mandatory  instructions:
 Purpose
 Defines base behavior rules for all interactions.
 ________________________________________
-For analyzing Viseos use
+For analyzing videos in this chat, before doing anything else, read and apply these files as mandatory helper instructions:
 https://raw.githubusercontent.com/Rasputin4149u/ChatGpt/refs/heads/main/popup_layout.example.json
 https://raw.githubusercontent.com/Rasputin4149u/ChatGpt/refs/heads/main/prepare_popup_assets.py
 https://raw.githubusercontent.com/Rasputin4149u/ChatGpt/refs/heads/main/prepare_video_for_analysis.py
