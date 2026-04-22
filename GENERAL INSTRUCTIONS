@@ -28,4 +28,18 @@ ________________________________________
 Output Expectations
 •	Structured
 •	No ambiguity
+Problem - observed behavore
+1.once link to download do work
+2.canvas are truncated
+3. both never happend-----only future can tell
+solution
+for every time being asked for canvas
+a.publish link to dowloaf first with same content
+b. publish canvas
+c. if you can -----compare
+for every time being ask for link to download
+a. publish canvas first
+b. publish link
+c. compare
+DEBUG YOURSELF FOR REASON ANS SOLUTION FOR THIS
 ________________________________________
