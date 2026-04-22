@@ -10,6 +10,7 @@ Defines base behavior rules for all interactions.
 ________________________________________
 For analyzing Viseos use
 https://raw.githubusercontent.com/Rasputin4149u/ChatGpt/refs/heads/main/popup_layout.example.json
+https://raw.githubusercontent.com/Rasputin4149u/ChatGpt/refs/heads/main/prepare_popup_assets.py
 ________________________________________
 Core Behavior Rules
 •	Work step-by-step
