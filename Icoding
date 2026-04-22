@@ -8,6 +8,9 @@ GENERAL INSTRUCTIONS HEADER (FOR ALL MODES)
 Purpose
 Defines base behavior rules for all interactions.
 ________________________________________
+For analyzing Viseos use
+https://raw.githubusercontent.com/Rasputin4149u/ChatGpt/refs/heads/main/popup_layout.example.json
+________________________________________
 Core Behavior Rules
 •	Work step-by-step
 •	Do not assume missing data
