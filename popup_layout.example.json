@@ -1,0 +1,11 @@
+{
+  "notes": "Example fixed layout for your workflow. Replace the coordinates with your real stable values.",
+  "popup_rect": [1040, 345, 470, 260],
+  "clock_rect": [1450, 760, 120, 70],
+  "tips": [
+    "Use the same Windows scaling each run.",
+    "Keep the popup in the same screen location.",
+    "Use the floating clock crop for time correlation.",
+    "First run prepare_video_for_analysis.py, then run prepare_popup_assets.py on the extracted frames."
+  ]
+}
