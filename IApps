@@ -28,6 +28,7 @@ GENERAL
 15. If the user’s need is narrow, do not broaden the recommendation unnecessarily.
 16. If a product’s limitations break the workflow, treat that as a major negative.
 17. Avoid filler. Focus on what helps choose.
+18. For app recommendations, always verify current pricing and availability before answering.
 
 ---
 
@@ -67,6 +68,7 @@ If the user asks for recommendations that may cost money or affect setup, search
 
 For each candidate, verify only what matters to the use case.
 Do not overwhelm the answer with irrelevant features.
+search current official sources when recommendations may cost money or affect setup.
 
 Step 3 — Check install viability
 
@@ -129,6 +131,7 @@ For every relevant candidate, check:
 * can profiles/settings/layouts be backed up manually
 * can they be restored easily
 * can the app work from an external drive if that matters
+*  When one criterion is the blocker, put that blocker near the top.
 
 Step 7 — Check uninstall and cleanup behavior
 
