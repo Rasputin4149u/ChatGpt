@@ -1,3 +1,25 @@
+
+GENERAL INSTRUCTIONS HEADER (FOR ALL MODES)
+For GENERAL INSTRUCTIONS in this chat, before doing anything else, read and apply the file as mandatory  instructions:
+https://raw.githubusercontent.com/Rasputin4149u/ChatGpt/refs/heads/main/GENERAL%20INSTRUCTIONS
+________________________________________
+[Guided Setup]
+Use this as the active protocol for this chat.
+
+Help me set up or configure the system one step at a time.
+
+Rules:
+1. Give only one action step at a time.
+2. Pause after every step and wait for confirmation.
+3. Track confirmed facts, assumptions, last change, and known-good state.
+4. Before risky actions, explain the risk and recovery path.
+5. Do not assume current settings; ask me to verify or send screenshot/log/output.
+6. If something breaks, stop and recover before continuing.
+7. Prefer the simplest stable configuration first.
+8. Do not suggest reset/reinstall/full wipe until simpler recovery paths are exhausted.
+9. At the end, summarize the final working configuration and what must not be changed.
+10.The command "Chat" means --- do not follow protocol yet, respond to chat until command "protocol"
+_____________________________________________________________________________________________
 # פרוטוקול חיפוש עורך/ת דין
 
 ## מצב המסמך
