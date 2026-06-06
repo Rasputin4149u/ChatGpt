@@ -1,0 +1,1324 @@
+#!/usr/bin/env python3
+# =============================================================================
+# QUICK READ HEADER FOR CHATGPT / HUMAN REVIEWER
+# =============================================================================
+# Tool role:
+#   Universal offline intake helper for uploaded files. Use it before analysis to
+#   turn one uploaded file into a predictable evidence package: original copy,
+#   metadata, extracted text, previews, contact sheets, timelines, manifest,
+#   summary, and logs.
+#
+# Fast mental model:
+#   INPUT FILE -> detect extension -> switch/case handler -> unified outputs.
+#
+# Supported families:
+#   text/log/code/config: .txt .log .md .json .xml .ini .cfg .conf .ps1 .psm1
+#                         .bat .cmd .js .css .py .csv .tsv .reg
+#   html:                 .html .htm
+#   subtitles:            .srt .vtt
+#   Word:                 .docx
+#   PDF:                  .pdf
+#   images:               .jpg .jpeg .png .webp .bmp .gif
+#   video:                .mp4 .mov .mkv .avi .webm .m4v
+#
+# Standard command:
+#   python prepare_uploaded_file_for_analysis_AN_ADD_ON_universal_intake_LinkV2_QuickHeader.py ^
+#     --input "C:\work\file.ext" ^
+#     --out "C:\work\prepared_file"
+#
+# Useful video/debug options:
+#   --video-every-seconds 1
+#   --start-seconds 0
+#   --end-seconds 30
+#   --crop console=20,80,1500,820
+#   --crop popup=350,150,750,500
+#
+# Most useful files for the assistant to open first:
+#   analysis_summary.txt
+#   manifests/manifest.json
+#   logs/extraction_log.txt
+#   extracted_text/*_numbered_lines.txt
+#   contact_sheets/*.png
+#   subtitles/srt_timeline.csv or subtitles/vtt_timeline.csv
+#   video_scene_changes/timeline.csv
+#
+# Safety rules:
+#   - Does not modify the original file.
+#   - Does not use the internet.
+#   - Does not run OCR by default.
+#   - Optional dependencies are used only when installed; otherwise the script
+#     writes warnings/errors and continues where possible.
+#
+# Reading/debugging convention:
+#   Search for LABEL: MAIN, LABEL: ROUTER, or LABEL: HANDLE_<TYPE>. The router
+#   uses Python match/case as the clean equivalent of switch/case. Error logging
+#   is centralized through log_line(), record_error(), safe_call(), and
+#   finalize_outputs().
+# =============================================================================
+
+r"""
+prepare_uploaded_file_for_analysis_AN_ADD_ON_universal_intake_LinkV2_QuickHeader.py
+
+Universal uploaded-file intake helper for manual/AI analysis.
+
+Purpose
+- Prepare uploaded files into a predictable analysis package.
+- Preserve the original file.
+- Extract available text/metadata/tables/links/images/previews.
+- Render or sample visual media when optional dependencies are available.
+- Write a unified manifest, summary, and log.
+
+Supported file families
+- Text/log/csv: .txt .log .csv .tsv .json .xml .ps1 .bat .cmd .js .py .htm/.html fallback
+- HTML: .html .htm
+- Subtitles/transcripts: .srt .vtt
+- DOCX: .docx
+- PDF: .pdf, with optional PyMuPDF / pypdf / PyPDF2 support
+- Images: .jpg .jpeg .png .webp .bmp .gif, with optional Pillow support
+- Video: .mp4 .mov .mkv .avi .webm .m4v, with optional OpenCV + Pillow support
+
+Dependencies
+- Core features use Python standard library only.
+- Optional richer features:
+  - Pillow for image previews/contact sheets
+  - OpenCV (cv2) for video frames/scene detection
+  - PyMuPDF (fitz), pypdf, or PyPDF2 for PDF extraction/rendering
+
+Examples
+python prepare_uploaded_file_for_analysis_AN_ADD_ON_universal_intake_LinkV2_QuickHeader.py ^
+  --input "C:\work\evidence.pdf" ^
+  --out "C:\work\prepared_evidence"
+
+python prepare_uploaded_file_for_analysis_AN_ADD_ON_universal_intake_LinkV2_QuickHeader.py ^
+  --input "C:\work\recording.mp4" ^
+  --out "C:\work\prepared_recording" ^
+  --video-every-seconds 1 ^
+  --crop console=20,80,1500,820 ^
+  --crop popup=350,150,750,500
+"""
+
+from __future__ import annotations
+
+import argparse
+import csv
+import datetime as _dt
+import hashlib
+import html as html_lib
+import json
+import mimetypes
+import os
+import re
+import shutil
+import sys
+import traceback
+import zipfile
+from dataclasses import asdict, dataclass, field
+from html.parser import HTMLParser
+from pathlib import Path
+from typing import Any, Iterable, Optional
+from xml.etree import ElementTree as ET
+
+# =============================================================================
+# LABEL: CONSTANTS / DEFAULTS
+# =============================================================================
+
+SCRIPT_VERSION = "V2-QuickHeader"
+SCRIPT_NAME = "prepare_uploaded_file_for_analysis_AN_ADD_ON_universal_intake_LinkV2_QuickHeader.py"
+
+DEFAULT_KEYWORDS = [
+    "error", "warning", "warn", "failed", "fail", "exception", "access denied",
+    "recordid", "record id", "eventrecordid", "event record id", "event", "registry",
+    "task scheduler", "security", "popup", "watcher", "revo", "ignore", "delete",
+    "targetobject", "targetfilename", "rulename", "process", "script error", "debug",
+]
+
+TEXT_EXTENSIONS = {
+    ".txt", ".log", ".md", ".json", ".xml", ".ini", ".cfg", ".conf", ".ps1", ".psm1",
+    ".bat", ".cmd", ".js", ".css", ".py", ".csv", ".tsv", ".reg",
+}
+HTML_EXTENSIONS = {".html", ".htm"}
+SUBTITLE_EXTENSIONS = {".srt", ".vtt"}
+DOCX_EXTENSIONS = {".docx"}
+PDF_EXTENSIONS = {".pdf"}
+IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif"}
+VIDEO_EXTENSIONS = {".mp4", ".mov", ".mkv", ".avi", ".webm", ".m4v"}
+
+TIMESTAMP_PATTERNS = [
+    re.compile(r"\b\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?\b"),
+    re.compile(r"\b\d{2}[-/]\d{2}[-/]\d{4}\s+\d{1,2}:\d{2}:\d{2}\b"),
+    re.compile(r"\b\d{1,2}:\d{2}:\d{2}(?:\.\d+)?\b"),
+]
+
+# =============================================================================
+# LABEL: DATA STRUCTURES
+# =============================================================================
+
+@dataclass
+class OutputPaths:
+    root: Path
+    original: Path
+    metadata: Path
+    extracted_text: Path
+    previews: Path
+    images: Path
+    video_frames: Path
+    video_scene_changes: Path
+    video_console_changes: Path
+    video_popup_candidates: Path
+    video_dense_around_changes: Path
+    tables: Path
+    links: Path
+    subtitles: Path
+    manifests: Path
+    logs: Path
+    contact_sheets: Path
+    errors: Path
+    crops: Path
+
+
+@dataclass
+class IntakeContext:
+    input_path: Path
+    out_dir: Path
+    paths: OutputPaths
+    started_at: str
+    keywords: list[str]
+    crop_rects: dict[str, tuple[int, int, int, int]] = field(default_factory=dict)
+    manifest: dict[str, Any] = field(default_factory=dict)
+    summary: list[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+    created_files: list[str] = field(default_factory=list)
+    log_path: Optional[Path] = None
+
+    def add_file(self, path: Path) -> None:
+        try:
+            self.created_files.append(str(path))
+        except Exception:
+            pass
+
+# =============================================================================
+# LABEL: LOGGING / ERROR HANDLING
+# =============================================================================
+
+def utc_now_iso() -> str:
+    return _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds")
+
+
+def local_stamp() -> str:
+    return _dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+
+
+def log_line(ctx: IntakeContext, level: str, message: str, data: Optional[dict[str, Any]] = None) -> None:
+    payload = f"[{local_stamp()}] [{level.upper()}] {message}"
+    if data:
+        payload += " | " + json.dumps(data, ensure_ascii=False, default=str)
+    print(payload)
+    if ctx.log_path:
+        try:
+            with ctx.log_path.open("a", encoding="utf-8") as f:
+                f.write(payload + "\n")
+        except Exception:
+            pass
+    ctx.manifest.setdefault("log_events", []).append({
+        "time": local_stamp(),
+        "level": level.upper(),
+        "message": message,
+        "data": data or {},
+    })
+
+
+def record_error(ctx: IntakeContext, where: str, exc: BaseException) -> None:
+    text = f"{where}: {type(exc).__name__}: {exc}"
+    ctx.errors.append(text)
+    log_line(ctx, "ERROR", text, {"traceback": traceback.format_exc()})
+
+
+def safe_call(ctx: IntakeContext, label: str, func, *args, **kwargs):
+    try:
+        log_line(ctx, "INFO", f"ENTER {label}")
+        result = func(*args, **kwargs)
+        log_line(ctx, "INFO", f"EXIT {label}")
+        return result
+    except Exception as exc:
+        record_error(ctx, label, exc)
+        return None
+
+# =============================================================================
+# LABEL: FILESYSTEM HELPERS
+# =============================================================================
+
+def ensure_dir(path: Path) -> None:
+    path.mkdir(parents=True, exist_ok=True)
+
+
+def write_text(ctx: IntakeContext, path: Path, text: str) -> None:
+    ensure_dir(path.parent)
+    path.write_text(text, encoding="utf-8", errors="replace")
+    ctx.add_file(path)
+
+
+def write_json(ctx: IntakeContext, path: Path, data: Any) -> None:
+    ensure_dir(path.parent)
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+    ctx.add_file(path)
+
+
+def copy_file(ctx: IntakeContext, src: Path, dst: Path) -> None:
+    ensure_dir(dst.parent)
+    shutil.copy2(src, dst)
+    ctx.add_file(dst)
+
+
+def safe_filename(value: str, max_len: int = 120) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "_", value.strip())
+    cleaned = cleaned.strip("._") or "file"
+    return cleaned[:max_len]
+
+
+def sha256_file(path: Path, block_size: int = 1024 * 1024) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for block in iter(lambda: f.read(block_size), b""):
+            h.update(block)
+    return h.hexdigest()
+
+
+def parse_crop(value: str) -> tuple[str, tuple[int, int, int, int]]:
+    if "=" not in value:
+        raise argparse.ArgumentTypeError("crop must be name=x,y,w,h")
+    name, rect_text = value.split("=", 1)
+    name = safe_filename(name)
+    parts = [p.strip() for p in rect_text.split(",")]
+    if len(parts) != 4:
+        raise argparse.ArgumentTypeError("crop rect must be x,y,w,h")
+    try:
+        x, y, w, h = map(int, parts)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("crop values must be integers") from exc
+    if w <= 0 or h <= 0:
+        raise argparse.ArgumentTypeError("crop width/height must be > 0")
+    return name, (x, y, w, h)
+
+
+def build_output_paths(out_dir: Path) -> OutputPaths:
+    return OutputPaths(
+        root=out_dir,
+        original=out_dir / "original",
+        metadata=out_dir / "metadata",
+        extracted_text=out_dir / "extracted_text",
+        previews=out_dir / "previews",
+        images=out_dir / "images",
+        video_frames=out_dir / "video_frames",
+        video_scene_changes=out_dir / "video_scene_changes",
+        video_console_changes=out_dir / "video_console_changes",
+        video_popup_candidates=out_dir / "video_popup_candidates",
+        video_dense_around_changes=out_dir / "video_dense_around_changes",
+        tables=out_dir / "tables",
+        links=out_dir / "links",
+        subtitles=out_dir / "subtitles",
+        manifests=out_dir / "manifests",
+        logs=out_dir / "logs",
+        contact_sheets=out_dir / "contact_sheets",
+        errors=out_dir / "errors",
+        crops=out_dir / "crops",
+    )
+
+
+def init_context(args: argparse.Namespace) -> IntakeContext:
+    input_path = Path(args.input).expanduser().resolve()
+    out_dir = Path(args.out).expanduser().resolve()
+    paths = build_output_paths(out_dir)
+    for p in asdict(paths).values():
+        ensure_dir(Path(p))
+
+    keywords = list(DEFAULT_KEYWORDS)
+    if args.keyword:
+        keywords.extend(args.keyword)
+    if args.keywords_file:
+        kpath = Path(args.keywords_file).expanduser()
+        if kpath.exists():
+            text = kpath.read_text(encoding="utf-8", errors="replace")
+            keywords.extend([line.strip() for line in text.splitlines() if line.strip()])
+
+    crops = {}
+    for crop_item in args.crop or []:
+        name, rect = parse_crop(crop_item)
+        crops[name] = rect
+
+    ctx = IntakeContext(
+        input_path=input_path,
+        out_dir=out_dir,
+        paths=paths,
+        started_at=utc_now_iso(),
+        keywords=sorted(set(k.lower() for k in keywords if k.strip())),
+        crop_rects=crops,
+    )
+    ctx.log_path = paths.logs / "extraction_log.txt"
+    log_line(ctx, "INFO", "UNIVERSAL INTAKE START", {"script": SCRIPT_NAME, "version": SCRIPT_VERSION})
+    return ctx
+
+# =============================================================================
+# LABEL: METADATA / MANIFEST
+# =============================================================================
+
+def collect_file_metadata(ctx: IntakeContext) -> dict[str, Any]:
+    path = ctx.input_path
+    stat = path.stat()
+    mime, encoding = mimetypes.guess_type(str(path))
+    metadata = {
+        "script_name": SCRIPT_NAME,
+        "script_version": SCRIPT_VERSION,
+        "started_at_utc": ctx.started_at,
+        "input_path": str(path),
+        "file_name": path.name,
+        "extension": path.suffix.lower(),
+        "size_bytes": stat.st_size,
+        "modified_time": _dt.datetime.fromtimestamp(stat.st_mtime).isoformat(timespec="seconds"),
+        "created_time": _dt.datetime.fromtimestamp(stat.st_ctime).isoformat(timespec="seconds"),
+        "mime_guess": mime,
+        "encoding_guess": encoding,
+        "sha256": sha256_file(path),
+    }
+    write_json(ctx, ctx.paths.metadata / "metadata.json", metadata)
+    write_text(ctx, ctx.paths.metadata / "file_hashes.txt", f"SHA256  {metadata['sha256']}  {path.name}\n")
+    ctx.manifest["metadata"] = metadata
+    ctx.summary.append(f"FILE TYPE: {metadata['extension'] or 'unknown'} / {metadata['mime_guess'] or 'unknown MIME'}")
+    ctx.summary.append(f"INPUT FILE: {path}")
+    ctx.summary.append(f"SHA256: {metadata['sha256']}")
+    return metadata
+
+
+def finalize_outputs(ctx: IntakeContext) -> None:
+    ctx.manifest["finished_at_utc"] = utc_now_iso()
+    ctx.manifest["created_files"] = ctx.created_files
+    ctx.manifest["errors"] = ctx.errors
+    ctx.manifest["summary"] = ctx.summary
+    write_json(ctx, ctx.paths.manifests / "manifest.json", ctx.manifest)
+
+    if ctx.errors:
+        write_text(ctx, ctx.paths.errors / "errors.txt", "\n".join(ctx.errors) + "\n")
+        ctx.summary.append(f"WARNINGS: {len(ctx.errors)} error/warning item(s) were logged. See errors/errors.txt")
+    else:
+        ctx.summary.append("WARNINGS: none recorded")
+
+    ctx.summary.append("NEXT BEST FILE TO READ: manifests/manifest.json, then analysis_summary.txt, then the extracted/contact-sheet artifact matching the file type.")
+    write_text(ctx, ctx.out_dir / "analysis_summary.txt", "\n".join(ctx.summary) + "\n")
+    log_line(ctx, "INFO", "UNIVERSAL INTAKE END", {"created_files": len(ctx.created_files), "errors": len(ctx.errors)})
+
+# =============================================================================
+# LABEL: TEXT / ENCODING / KEYWORDS
+# =============================================================================
+
+def detect_text_encoding(path: Path) -> tuple[str, str]:
+    data = path.read_bytes()
+    candidates = ["utf-8-sig", "utf-8", "cp1255", "windows-1252", "latin-1"]
+    for enc in candidates:
+        try:
+            data.decode(enc)
+            return enc, "decoded_without_error"
+        except UnicodeDecodeError:
+            continue
+    return "utf-8", "fallback_replace"
+
+
+def read_text_flexible(path: Path, forced_encoding: Optional[str] = None) -> tuple[str, str, str]:
+    if forced_encoding:
+        return path.read_text(encoding=forced_encoding, errors="replace"), forced_encoding, "forced"
+    enc, reason = detect_text_encoding(path)
+    return path.read_text(encoding=enc, errors="replace"), enc, reason
+
+
+def normalize_newlines(text: str) -> str:
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
+def line_numbered_text(text: str) -> str:
+    return "\n".join(f"{idx:06d}: {line}" for idx, line in enumerate(text.splitlines(), 1)) + "\n"
+
+
+def write_chunks(ctx: IntakeContext, text: str, chunk_dir: Path, lines_per_chunk: int = 500) -> list[str]:
+    ensure_dir(chunk_dir)
+    lines = text.splitlines()
+    paths = []
+    for start in range(0, len(lines), lines_per_chunk):
+        idx = start // lines_per_chunk + 1
+        chunk_text = "\n".join(lines[start:start + lines_per_chunk]) + "\n"
+        out = chunk_dir / f"chunk_{idx:04d}_lines_{start+1:06d}_{min(start+lines_per_chunk, len(lines)):06d}.txt"
+        write_text(ctx, out, chunk_text)
+        paths.append(str(out))
+    return paths
+
+
+def keyword_hits_rows(text: str, keywords: list[str]) -> list[dict[str, Any]]:
+    rows = []
+    lowered_keywords = [k.lower() for k in keywords]
+    for line_no, line in enumerate(text.splitlines(), 1):
+        low = line.lower()
+        found = [k for k in lowered_keywords if k and k in low]
+        if found:
+            rows.append({"line": line_no, "keywords": ";".join(found), "text": line[:2000]})
+    return rows
+
+
+def write_csv_rows(ctx: IntakeContext, path: Path, rows: list[dict[str, Any]], fieldnames: Optional[list[str]] = None) -> None:
+    ensure_dir(path.parent)
+    if not fieldnames:
+        fieldnames = sorted({key for row in rows for key in row.keys()}) if rows else ["message"]
+    with path.open("w", encoding="utf-8-sig", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(row)
+    ctx.add_file(path)
+
+
+def extract_timestamps_from_text(text: str) -> list[dict[str, Any]]:
+    rows = []
+    for line_no, line in enumerate(text.splitlines(), 1):
+        for pattern in TIMESTAMP_PATTERNS:
+            for m in pattern.finditer(line):
+                rows.append({"line": line_no, "timestamp_text": m.group(0), "context": line[:1000]})
+    return rows
+
+
+def handle_text_like_file(ctx: IntakeContext, encoding: Optional[str] = None) -> None:
+    text, enc, reason = read_text_flexible(ctx.input_path, encoding)
+    text = normalize_newlines(text)
+    base = safe_filename(ctx.input_path.stem)
+
+    write_text(ctx, ctx.paths.extracted_text / f"{base}_utf8_normalized.txt", text)
+    write_text(ctx, ctx.paths.extracted_text / f"{base}_numbered_lines.txt", line_numbered_text(text))
+    chunk_paths = write_chunks(ctx, text, ctx.paths.extracted_text / "chunks")
+
+    hits = keyword_hits_rows(text, ctx.keywords)
+    write_csv_rows(ctx, ctx.paths.extracted_text / "keyword_hits.csv", hits, ["line", "keywords", "text"])
+
+    ts_rows = extract_timestamps_from_text(text)
+    write_csv_rows(ctx, ctx.paths.extracted_text / "timestamps.csv", ts_rows, ["line", "timestamp_text", "context"])
+
+    stats = {
+        "encoding": enc,
+        "encoding_reason": reason,
+        "line_count": len(text.splitlines()),
+        "char_count": len(text),
+        "keyword_hit_count": len(hits),
+        "timestamp_hit_count": len(ts_rows),
+        "chunk_count": len(chunk_paths),
+    }
+    write_json(ctx, ctx.paths.extracted_text / "line_stats.json", stats)
+    ctx.manifest["text_like"] = stats
+    ctx.summary.append(f"WHAT WAS EXTRACTED: text normalized to UTF-8, numbered lines, chunks, keyword hits, timestamp hits. Encoding={enc} ({reason}).")
+
+    if ctx.input_path.suffix.lower() in {".csv", ".tsv"}:
+        safe_call(ctx, "CSV_OVERVIEW", build_csv_overview, ctx, text)
+
+
+def build_csv_overview(ctx: IntakeContext, text: str) -> None:
+    sample = text[:8192]
+    try:
+        dialect = csv.Sniffer().sniff(sample)
+        delimiter = dialect.delimiter
+    except Exception:
+        delimiter = "\t" if ctx.input_path.suffix.lower() == ".tsv" else ","
+    rows = list(csv.reader(text.splitlines(), delimiter=delimiter))
+    col_count = max((len(r) for r in rows), default=0)
+    overview = {
+        "delimiter": delimiter,
+        "row_count": len(rows),
+        "max_column_count": col_count,
+        "first_rows": rows[:10],
+    }
+    write_json(ctx, ctx.paths.tables / "csv_overview.json", overview)
+    ctx.manifest["csv_overview"] = overview
+
+# =============================================================================
+# LABEL: SRT / VTT HANDLER
+# =============================================================================
+
+def timestamp_to_seconds(value: str) -> float:
+    value = value.strip().replace(",", ".")
+    parts = value.split(":")
+    if len(parts) == 3:
+        h, m, s = parts
+        return int(h) * 3600 + int(m) * 60 + float(s)
+    if len(parts) == 2:
+        m, s = parts
+        return int(m) * 60 + float(s)
+    return float(parts[0])
+
+
+def parse_srt_or_vtt(text: str, is_vtt: bool = False) -> list[dict[str, Any]]:
+    text = normalize_newlines(text).strip("\ufeff\n ")
+    if is_vtt:
+        text = re.sub(r"^WEBVTT.*?(?:\n\n|$)", "", text, flags=re.IGNORECASE | re.DOTALL)
+    blocks = re.split(r"\n\s*\n", text)
+    segments = []
+    idx_auto = 1
+    time_re = re.compile(r"(?P<start>\d{1,2}:\d{2}:\d{2}[,.]\d{3}|\d{2}:\d{2}[,.]\d{3})\s*-->\s*(?P<end>\d{1,2}:\d{2}:\d{2}[,.]\d{3}|\d{2}:\d{2}[,.]\d{3})")
+    for raw in blocks:
+        lines = [line.strip("\ufeff") for line in raw.splitlines() if line.strip()]
+        if not lines:
+            continue
+        time_line_index = None
+        m = None
+        for i, line in enumerate(lines[:3]):
+            m = time_re.search(line)
+            if m:
+                time_line_index = i
+                break
+        if not m or time_line_index is None:
+            continue
+        index_text = lines[0] if time_line_index > 0 else str(idx_auto)
+        try:
+            index = int(index_text)
+        except Exception:
+            index = idx_auto
+        text_lines = lines[time_line_index + 1:]
+        seg_text = " ".join(text_lines).strip()
+        start = m.group("start")
+        end = m.group("end")
+        start_sec = timestamp_to_seconds(start)
+        end_sec = timestamp_to_seconds(end)
+        segments.append({
+            "index": index,
+            "start": start,
+            "end": end,
+            "start_seconds": round(start_sec, 3),
+            "end_seconds": round(end_sec, 3),
+            "duration_seconds": round(max(0.0, end_sec - start_sec), 3),
+            "text": seg_text,
+        })
+        idx_auto += 1
+    return segments
+
+
+def handle_subtitle_file(ctx: IntakeContext, encoding: Optional[str] = None) -> None:
+    raw_text, enc, reason = read_text_flexible(ctx.input_path, encoding)
+    raw_text = normalize_newlines(raw_text)
+    is_vtt = ctx.input_path.suffix.lower() == ".vtt"
+    segments = parse_srt_or_vtt(raw_text, is_vtt=is_vtt)
+
+    write_text(ctx, ctx.paths.subtitles / f"subtitle_raw_copy{ctx.input_path.suffix.lower()}", raw_text)
+    write_json(ctx, ctx.paths.subtitles / "srt_vtt_segments.json", segments)
+    write_text(ctx, ctx.paths.subtitles / "srt_vtt_text_only.txt", "\n".join(s["text"] for s in segments) + "\n")
+    write_text(ctx, ctx.paths.subtitles / "srt_vtt_numbered_blocks.txt", "\n\n".join(
+        f"BLOCK {s['index']}\n{s['start']} --> {s['end']}\n{s['text']}" for s in segments
+    ) + "\n")
+    write_text(ctx, ctx.paths.subtitles / "srt_vtt_clean_transcript_with_timecodes.txt", "\n".join(
+        f"[{s['start']} - {s['end']}] {s['text']}" for s in segments
+    ) + "\n")
+
+    rows = []
+    for s in segments:
+        low = s["text"].lower()
+        keys = [k for k in ctx.keywords if k in low]
+        row = dict(s)
+        row["has_keyword"] = bool(keys)
+        row["keywords"] = ";".join(keys)
+        rows.append(row)
+    write_csv_rows(ctx, ctx.paths.subtitles / "srt_vtt_timeline.csv", rows, [
+        "index", "start", "end", "start_seconds", "end_seconds", "duration_seconds", "text", "has_keyword", "keywords",
+    ])
+
+    warnings = []
+    long_gaps = []
+    overlaps = []
+    for prev, cur in zip(segments, segments[1:]):
+        gap = cur["start_seconds"] - prev["end_seconds"]
+        if gap > 10:
+            long_gaps.append({"after_index": prev["index"], "before_index": cur["index"], "gap_seconds": round(gap, 3)})
+        if gap < -0.1:
+            overlaps.append({"first_index": prev["index"], "second_index": cur["index"], "overlap_seconds": round(abs(gap), 3)})
+    stats = {
+        "encoding": enc,
+        "encoding_reason": reason,
+        "segment_count": len(segments),
+        "total_transcript_seconds": segments[-1]["end_seconds"] if segments else 0,
+        "long_gap_count_gt_10s": len(long_gaps),
+        "overlap_count": len(overlaps),
+        "long_gaps": long_gaps[:100],
+        "overlaps": overlaps[:100],
+    }
+    write_json(ctx, ctx.paths.subtitles / "srt_vtt_stats.json", stats)
+    ctx.manifest["subtitles"] = stats
+    ctx.summary.append(f"WHAT WAS EXTRACTED: subtitle timeline CSV, clean transcript, segments JSON, stats. Segments={len(segments)}.")
+
+# =============================================================================
+# LABEL: HTML HANDLER
+# =============================================================================
+
+class SimpleHTMLIntakeParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.skip_depth = 0
+        self.visible_text: list[str] = []
+        self.links: list[dict[str, Any]] = []
+        self.images: list[dict[str, Any]] = []
+        self.scripts: list[dict[str, Any]] = []
+        self.inputs: list[dict[str, Any]] = []
+        self.buttons: list[dict[str, Any]] = []
+        self.forms: list[dict[str, Any]] = []
+        self.tags: dict[str, int] = {}
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, Optional[str]]]) -> None:
+        tag = tag.lower()
+        attr = {k.lower(): (v or "") for k, v in attrs}
+        self.tags[tag] = self.tags.get(tag, 0) + 1
+        if tag in {"script", "style", "noscript"}:
+            self.skip_depth += 1
+        if tag == "a":
+            self.links.append({"href": attr.get("href", ""), "text_hint": "", "attrs": attr})
+        elif tag == "img":
+            self.images.append({"src": attr.get("src", ""), "alt": attr.get("alt", ""), "attrs": attr})
+        elif tag == "script":
+            self.scripts.append({"src": attr.get("src", ""), "type": attr.get("type", ""), "attrs": attr})
+        elif tag == "input":
+            self.inputs.append({"type": attr.get("type", ""), "name": attr.get("name", ""), "id": attr.get("id", ""), "attrs": attr})
+        elif tag == "button":
+            self.buttons.append({"id": attr.get("id", ""), "class": attr.get("class", ""), "attrs": attr})
+        elif tag == "form":
+            self.forms.append({"action": attr.get("action", ""), "method": attr.get("method", ""), "attrs": attr})
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag.lower() in {"script", "style", "noscript"} and self.skip_depth:
+            self.skip_depth -= 1
+
+    def handle_data(self, data: str) -> None:
+        if self.skip_depth:
+            return
+        text = " ".join(data.split())
+        if text:
+            self.visible_text.append(text)
+
+
+def handle_html_file(ctx: IntakeContext, encoding: Optional[str] = None) -> None:
+    text, enc, reason = read_text_flexible(ctx.input_path, encoding)
+    parser = SimpleHTMLIntakeParser()
+    parser.feed(text)
+    visible = "\n".join(parser.visible_text) + "\n"
+
+    write_text(ctx, ctx.paths.extracted_text / "html_visible_text.txt", visible)
+    write_text(ctx, ctx.paths.extracted_text / "html_visible_text_numbered.txt", line_numbered_text(visible))
+    write_csv_rows(ctx, ctx.paths.links / "html_links.csv", parser.links, ["href", "text_hint", "attrs"])
+    write_csv_rows(ctx, ctx.paths.links / "html_images.csv", parser.images, ["src", "alt", "attrs"])
+    write_json(ctx, ctx.paths.links / "html_scripts_inventory.json", parser.scripts)
+    write_json(ctx, ctx.paths.links / "html_forms_inputs_buttons.json", {
+        "forms": parser.forms,
+        "inputs": parser.inputs,
+        "buttons": parser.buttons,
+    })
+    summary = {
+        "encoding": enc,
+        "encoding_reason": reason,
+        "visible_text_lines": len(visible.splitlines()),
+        "links": len(parser.links),
+        "images": len(parser.images),
+        "scripts": len(parser.scripts),
+        "forms": len(parser.forms),
+        "inputs": len(parser.inputs),
+        "buttons": len(parser.buttons),
+        "tag_counts": parser.tags,
+    }
+    write_json(ctx, ctx.paths.manifests / "html_dom_summary.json", summary)
+    hits = keyword_hits_rows(visible, ctx.keywords)
+    write_csv_rows(ctx, ctx.paths.extracted_text / "keyword_hits.csv", hits, ["line", "keywords", "text"])
+    ctx.manifest["html"] = summary
+    ctx.summary.append(f"WHAT WAS EXTRACTED: visible HTML text, links, images, scripts, forms/inputs/buttons. Links={len(parser.links)}, scripts={len(parser.scripts)}.")
+
+# =============================================================================
+# LABEL: DOCX HANDLER
+# =============================================================================
+
+W_NS = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+R_NS = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
+REL_NS = "{http://schemas.openxmlformats.org/package/2006/relationships}"
+
+
+def docx_text_from_element(el: ET.Element) -> str:
+    parts = []
+    for t in el.iter(W_NS + "t"):
+        if t.text:
+            parts.append(t.text)
+    return "".join(parts)
+
+
+def handle_docx_file(ctx: IntakeContext) -> None:
+    paragraphs: list[str] = []
+    tables: list[list[list[str]]] = []
+    links: list[dict[str, str]] = []
+    image_files: list[str] = []
+    structure: dict[str, Any] = {"xml_parts": [], "media_files": []}
+
+    with zipfile.ZipFile(ctx.input_path, "r") as z:
+        names = z.namelist()
+        structure["xml_parts"] = [n for n in names if n.endswith(".xml")]
+        structure["media_files"] = [n for n in names if n.startswith("word/media/")]
+
+        for media in structure["media_files"]:
+            out = ctx.paths.images / "docx_embedded" / Path(media).name
+            ensure_dir(out.parent)
+            out.write_bytes(z.read(media))
+            ctx.add_file(out)
+            image_files.append(str(out))
+
+        rel_path = "word/_rels/document.xml.rels"
+        if rel_path in names:
+            rel_xml = ET.fromstring(z.read(rel_path))
+            for rel in rel_xml.iter(REL_NS + "Relationship"):
+                if "hyperlink" in (rel.attrib.get("Type", "").lower()):
+                    links.append({"id": rel.attrib.get("Id", ""), "target": rel.attrib.get("Target", ""), "type": rel.attrib.get("Type", "")})
+
+        text_parts_by_name = []
+        for part_name in ["word/document.xml"] + [n for n in names if re.match(r"word/(header|footer|comments|footnotes|endnotes)\d*\.xml$", n)]:
+            if part_name not in names:
+                continue
+            root = ET.fromstring(z.read(part_name))
+            part_paras = []
+            for p in root.iter(W_NS + "p"):
+                p_text = docx_text_from_element(p).strip()
+                if p_text:
+                    part_paras.append(p_text)
+                    paragraphs.append(p_text)
+            text_parts_by_name.append({"part": part_name, "paragraph_count": len(part_paras)})
+
+            for tbl in root.iter(W_NS + "tbl"):
+                table_rows = []
+                for tr in tbl.iter(W_NS + "tr"):
+                    row = []
+                    for tc in tr.iter(W_NS + "tc"):
+                        row.append(docx_text_from_element(tc).strip())
+                    if row:
+                        table_rows.append(row)
+                if table_rows:
+                    tables.append(table_rows)
+
+    body_text = "\n".join(paragraphs) + "\n"
+    write_text(ctx, ctx.paths.extracted_text / "docx_text.txt", body_text)
+    write_text(ctx, ctx.paths.extracted_text / "docx_text_numbered_lines.txt", line_numbered_text(body_text))
+    write_csv_rows(ctx, ctx.paths.links / "docx_links.csv", links, ["id", "target", "type"])
+    write_json(ctx, ctx.paths.manifests / "docx_structure.json", {
+        **structure,
+        "text_parts": text_parts_by_name,
+        "paragraph_count": len(paragraphs),
+        "table_count": len(tables),
+        "link_count": len(links),
+    })
+
+    for idx, table in enumerate(tables, 1):
+        max_cols = max((len(r) for r in table), default=0)
+        out = ctx.paths.tables / f"docx_table_{idx:03d}.csv"
+        ensure_dir(out.parent)
+        with out.open("w", encoding="utf-8-sig", newline="") as f:
+            writer = csv.writer(f)
+            for row in table:
+                writer.writerow(row + [""] * (max_cols - len(row)))
+        ctx.add_file(out)
+
+    hits = keyword_hits_rows(body_text, ctx.keywords)
+    write_csv_rows(ctx, ctx.paths.extracted_text / "keyword_hits.csv", hits, ["line", "keywords", "text"])
+    ctx.manifest["docx"] = {"paragraphs": len(paragraphs), "tables": len(tables), "links": len(links), "embedded_images": len(image_files)}
+    ctx.summary.append(f"WHAT WAS EXTRACTED: DOCX paragraphs, numbered text, tables, links, embedded images. Paragraphs={len(paragraphs)}, tables={len(tables)}.")
+
+# =============================================================================
+# LABEL: PDF HANDLER
+# =============================================================================
+
+def try_import_fitz():
+    try:
+        import fitz  # type: ignore
+        return fitz
+    except Exception:
+        return None
+
+
+def try_import_pypdf():
+    try:
+        import pypdf  # type: ignore
+        return pypdf
+    except Exception:
+        try:
+            import PyPDF2 as pypdf  # type: ignore
+            return pypdf
+        except Exception:
+            return None
+
+
+def handle_pdf_file(ctx: IntakeContext, max_render_pages: int = 50) -> None:
+    fitz = try_import_fitz()
+    pypdf = None if fitz else try_import_pypdf()
+    page_texts: list[str] = []
+    rendered_pages: list[str] = []
+    page_count: Optional[int] = None
+
+    if fitz:
+        doc = fitz.open(str(ctx.input_path))
+        page_count = doc.page_count
+        for i, page in enumerate(doc):
+            text = page.get_text("text") or ""
+            page_texts.append(text)
+            out_text = ctx.paths.extracted_text / "pdf_text_by_page" / f"page_{i+1:03d}.txt"
+            write_text(ctx, out_text, text)
+            if i < max_render_pages:
+                pix = page.get_pixmap(matrix=fitz.Matrix(1.5, 1.5), alpha=False)
+                out_png = ctx.paths.previews / "pdf_rendered_pages" / f"page_{i+1:03d}.png"
+                ensure_dir(out_png.parent)
+                pix.save(str(out_png))
+                ctx.add_file(out_png)
+                rendered_pages.append(str(out_png))
+        doc.close()
+    elif pypdf:
+        reader = pypdf.PdfReader(str(ctx.input_path))
+        page_count = len(reader.pages)
+        for i, page in enumerate(reader.pages):
+            text = page.extract_text() or ""
+            page_texts.append(text)
+            write_text(ctx, ctx.paths.extracted_text / "pdf_text_by_page" / f"page_{i+1:03d}.txt", text)
+    else:
+        ctx.summary.append("WHAT FAILED: PDF extraction needs optional PyMuPDF, pypdf, or PyPDF2. No PDF text/render extraction was available.")
+        ctx.manifest["pdf"] = {"status": "no_pdf_library_available"}
+        return
+
+    all_text = "\n\n".join(f"--- PAGE {i+1} ---\n{text}" for i, text in enumerate(page_texts))
+    write_text(ctx, ctx.paths.extracted_text / "pdf_all_text.txt", all_text)
+    write_text(ctx, ctx.paths.extracted_text / "pdf_all_text_numbered_lines.txt", line_numbered_text(all_text))
+
+    text_lengths = [len(t.strip()) for t in page_texts]
+    likely_scanned_pages = [i + 1 for i, length in enumerate(text_lengths) if length < 20]
+    pdf_type = "text_pdf"
+    if page_count and len(likely_scanned_pages) == page_count:
+        pdf_type = "scanned_or_image_pdf"
+    elif likely_scanned_pages:
+        pdf_type = "mixed_pdf"
+
+    if rendered_pages:
+        safe_call(ctx, "PDF_CONTACT_SHEET", create_contact_sheet_from_paths, ctx, [Path(p) for p in rendered_pages], ctx.paths.contact_sheets / "pdf_contact_sheet_pages.png", 4, 300)
+
+    hits = keyword_hits_rows(all_text, ctx.keywords)
+    write_csv_rows(ctx, ctx.paths.extracted_text / "keyword_hits.csv", hits, ["line", "keywords", "text"])
+    pdf_meta = {
+        "page_count": page_count,
+        "pdf_type_estimate": pdf_type,
+        "rendered_page_count": len(rendered_pages),
+        "likely_scanned_or_no_text_pages": likely_scanned_pages[:200],
+        "total_text_chars": len(all_text),
+    }
+    write_json(ctx, ctx.paths.manifests / "pdf_manifest.json", pdf_meta)
+    ctx.manifest["pdf"] = pdf_meta
+    ctx.summary.append(f"WHAT WAS EXTRACTED: PDF text by page, combined text, keyword hits; rendered pages if PyMuPDF available. Type estimate={pdf_type}.")
+
+# =============================================================================
+# LABEL: IMAGE HELPERS / IMAGE HANDLER
+# =============================================================================
+
+def try_import_pillow():
+    try:
+        from PIL import Image, ImageOps, ImageEnhance  # type: ignore
+        return Image, ImageOps, ImageEnhance
+    except Exception:
+        return None, None, None
+
+
+def create_contact_sheet_from_paths(ctx: IntakeContext, image_paths: list[Path], out_path: Path, cols: int = 4, thumb_width: int = 360) -> None:
+    Image, ImageOps, _ = try_import_pillow()
+    if Image is None:
+        raise RuntimeError("Pillow is not available")
+    if not image_paths:
+        raise ValueError("No images supplied for contact sheet")
+    thumbs = []
+    max_h = 0
+    for path in image_paths:
+        img = Image.open(path).convert("RGB")
+        ratio = thumb_width / max(1, img.width)
+        thumb = img.resize((thumb_width, max(1, int(img.height * ratio))))
+        label_h = 24
+        labeled = ImageOps.expand(thumb, border=(0, 0, 0, label_h), fill="white")
+        try:
+            from PIL import ImageDraw  # type: ignore
+            draw = ImageDraw.Draw(labeled)
+            draw.text((6, thumb.height + 4), path.stem[:50], fill="black")
+        except Exception:
+            pass
+        thumbs.append(labeled)
+        max_h = max(max_h, labeled.height)
+    import math
+    rows = math.ceil(len(thumbs) / cols)
+    sheet = Image.new("RGB", (cols * thumb_width, rows * max_h), "white")
+    for idx, thumb in enumerate(thumbs):
+        row, col = divmod(idx, cols)
+        sheet.paste(thumb, (col * thumb_width, row * max_h))
+    ensure_dir(out_path.parent)
+    sheet.save(out_path)
+    ctx.add_file(out_path)
+
+
+def handle_image_file(ctx: IntakeContext) -> None:
+    Image, ImageOps, ImageEnhance = try_import_pillow()
+    if Image is None:
+        ctx.summary.append("WHAT FAILED: Pillow is not available, so only common file metadata was extracted for this image.")
+        ctx.manifest["image"] = {"status": "pillow_not_available"}
+        return
+
+    img = Image.open(ctx.input_path)
+    try:
+        img = ImageOps.exif_transpose(img)
+    except Exception:
+        pass
+    image_meta = {
+        "format": img.format,
+        "mode": img.mode,
+        "width": img.width,
+        "height": img.height,
+        "has_exif": bool(getattr(img, "getexif", lambda: {})()),
+    }
+    write_json(ctx, ctx.paths.metadata / "image_metadata.json", image_meta)
+
+    rgb = img.convert("RGB")
+    preview = rgb.copy()
+    preview.thumbnail((1600, 1600))
+    preview_path = ctx.paths.previews / "image_preview_scaled.png"
+    preview.save(preview_path)
+    ctx.add_file(preview_path)
+
+    high = ImageOps.autocontrast(rgb.convert("L")).convert("RGB")
+    high.thumbnail((1600, 1600))
+    high_path = ctx.paths.previews / "image_preview_high_contrast.png"
+    high.save(high_path)
+    ctx.add_file(high_path)
+
+    crop_outputs = []
+    for name, (x, y, w, h) in ctx.crop_rects.items():
+        crop = rgb.crop((max(0, x), max(0, y), min(rgb.width, x + w), min(rgb.height, y + h)))
+        if crop.width > 0 and crop.height > 0:
+            out = ctx.paths.crops / f"image_crop_{name}.png"
+            crop.save(out)
+            ctx.add_file(out)
+            crop_outputs.append(str(out))
+
+    safe_call(ctx, "IMAGE_CONTACT_SHEET", create_contact_sheet_from_paths, ctx, [preview_path, high_path], ctx.paths.contact_sheets / "image_contact_sheet.png", 2, 500)
+    ctx.manifest["image"] = {**image_meta, "crop_count": len(crop_outputs)}
+    ctx.summary.append(f"WHAT WAS EXTRACTED: image metadata, scaled preview, high-contrast preview, optional crops. Size={img.width}x{img.height}.")
+
+# =============================================================================
+# LABEL: VIDEO HANDLER
+# =============================================================================
+
+def try_import_cv2():
+    try:
+        import cv2  # type: ignore
+        return cv2
+    except Exception:
+        return None
+
+
+def bgr_to_pil_image(frame_bgr):
+    cv2 = try_import_cv2()
+    Image, _, _ = try_import_pillow()
+    if cv2 is None or Image is None:
+        raise RuntimeError("cv2/Pillow missing")
+    rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+    return Image.fromarray(rgb)
+
+
+def save_bgr_frame(ctx: IntakeContext, frame_bgr, out_path: Path) -> None:
+    img = bgr_to_pil_image(frame_bgr)
+    ensure_dir(out_path.parent)
+    img.save(out_path)
+    ctx.add_file(out_path)
+
+
+def safe_crop_bgr(frame_bgr, rect: tuple[int, int, int, int]):
+    x, y, w, h = rect
+    h_img, w_img = frame_bgr.shape[:2]
+    x1, y1 = max(0, x), max(0, y)
+    x2, y2 = min(w_img, x + w), min(h_img, y + h)
+    if x1 >= x2 or y1 >= y2:
+        return None
+    return frame_bgr[y1:y2, x1:x2]
+
+
+def frame_diff_score(cv2, prev_bgr, cur_bgr) -> float:
+    prev = cv2.resize(cv2.cvtColor(prev_bgr, cv2.COLOR_BGR2GRAY), (320, 180))
+    cur = cv2.resize(cv2.cvtColor(cur_bgr, cv2.COLOR_BGR2GRAY), (320, 180))
+    diff = cv2.absdiff(prev, cur)
+    return float(diff.mean())
+
+
+def handle_video_file(ctx: IntakeContext, args: argparse.Namespace) -> None:
+    cv2 = try_import_cv2()
+    Image, _, _ = try_import_pillow()
+    if cv2 is None or Image is None:
+        ctx.summary.append("WHAT FAILED: video handling requires optional OpenCV (cv2) and Pillow.")
+        ctx.manifest["video"] = {"status": "cv2_or_pillow_not_available"}
+        return
+
+    cap = cv2.VideoCapture(str(ctx.input_path))
+    if not cap.isOpened():
+        ctx.summary.append("WHAT FAILED: OpenCV could not open the video file.")
+        ctx.manifest["video"] = {"status": "cannot_open_video"}
+        return
+
+    fps = float(cap.get(cv2.CAP_PROP_FPS) or 0)
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+    duration = (total_frames / fps) if fps else None
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
+
+    start_ms = int(max(0.0, args.video_start_seconds) * 1000)
+    step_ms = max(1, int(max(0.05, args.video_every_seconds) * 1000))
+    end_ms = int(args.video_end_seconds * 1000) if args.video_end_seconds is not None else (int(duration * 1000) if duration else None)
+
+    sampled_paths: list[Path] = []
+    scene_paths: list[Path] = []
+    popup_paths: list[Path] = []
+    console_paths: list[Path] = []
+    timeline_rows: list[dict[str, Any]] = []
+    dense_source_seconds: list[float] = []
+
+    prev_frame = None
+    prev_console = None
+    idx = 0
+    current_ms = start_ms
+
+    while True:
+        if end_ms is not None and current_ms > end_ms:
+            break
+        cap.set(cv2.CAP_PROP_POS_MSEC, current_ms)
+        ok, frame = cap.read()
+        if not ok or frame is None:
+            break
+
+        label = f"{idx:04d}_{current_ms:08d}ms"
+        frame_path = ctx.paths.video_frames / f"{label}.png"
+        save_bgr_frame(ctx, frame, frame_path)
+        sampled_paths.append(frame_path)
+
+        crop_files = {}
+        for name, rect in ctx.crop_rects.items():
+            crop = safe_crop_bgr(frame, rect)
+            if crop is not None:
+                crop_out = ctx.paths.crops / name / f"{label}_{name}.png"
+                save_bgr_frame(ctx, crop, crop_out)
+                crop_files[name] = str(crop_out)
+
+        score = 0.0
+        is_scene_change = False
+        is_popup_candidate = False
+        is_console_change = False
+        console_score = 0.0
+
+        if prev_frame is not None:
+            score = frame_diff_score(cv2, prev_frame, frame)
+            is_scene_change = score >= args.video_change_threshold
+            if is_scene_change:
+                out = ctx.paths.video_scene_changes / f"{label}_change_{score:.2f}.png"
+                save_bgr_frame(ctx, frame, out)
+                scene_paths.append(out)
+                dense_source_seconds.append(current_ms / 1000.0)
+
+            # Popup heuristic: scene change plus noticeable center-region change.
+            h, w = frame.shape[:2]
+            center_rect = (int(w * 0.20), int(h * 0.15), int(w * 0.60), int(h * 0.70))
+            prev_center = safe_crop_bgr(prev_frame, center_rect)
+            cur_center = safe_crop_bgr(frame, center_rect)
+            center_score = frame_diff_score(cv2, prev_center, cur_center) if prev_center is not None and cur_center is not None else 0.0
+            is_popup_candidate = is_scene_change and center_score >= args.video_change_threshold
+            if is_popup_candidate:
+                out = ctx.paths.video_popup_candidates / f"{label}_popup_{center_score:.2f}.png"
+                save_bgr_frame(ctx, frame, out)
+                popup_paths.append(out)
+
+            # Console-change heuristic: named console crop if supplied, otherwise full frame.
+            console_rect = ctx.crop_rects.get("console")
+            cur_console = safe_crop_bgr(frame, console_rect) if console_rect else frame
+            if prev_console is not None and cur_console is not None:
+                console_score = frame_diff_score(cv2, prev_console, cur_console)
+                is_console_change = console_score >= args.video_console_change_threshold
+                if is_console_change:
+                    out = ctx.paths.video_console_changes / f"{label}_console_{console_score:.2f}.png"
+                    save_bgr_frame(ctx, frame, out)
+                    console_paths.append(out)
+            prev_console = cur_console.copy() if cur_console is not None else None
+        else:
+            console_rect = ctx.crop_rects.get("console")
+            first_console = safe_crop_bgr(frame, console_rect) if console_rect else frame
+            prev_console = first_console.copy() if first_console is not None else None
+
+        timeline_rows.append({
+            "index": idx,
+            "ms": current_ms,
+            "seconds": round(current_ms / 1000.0, 3),
+            "frame_path": str(frame_path),
+            "change_score": round(score, 3),
+            "scene_change": is_scene_change,
+            "popup_candidate": is_popup_candidate,
+            "console_change": is_console_change,
+            "console_score": round(console_score, 3),
+            "crops": json.dumps(crop_files, ensure_ascii=False),
+        })
+
+        prev_frame = frame.copy()
+        idx += 1
+        current_ms += step_ms
+        if duration and current_ms > int(duration * 1000):
+            break
+
+    # Dense extraction around detected scene changes.
+    dense_paths: list[Path] = []
+    if not args.no_video_dense and dense_source_seconds:
+        for change_idx, sec in enumerate(dense_source_seconds[:args.max_dense_events], 1):
+            start = max(0.0, sec - args.video_dense_window_seconds)
+            end = sec + args.video_dense_window_seconds
+            t = start
+            dense_i = 0
+            while t <= end:
+                cap.set(cv2.CAP_PROP_POS_MSEC, int(t * 1000))
+                ok, frame = cap.read()
+                if not ok or frame is None:
+                    break
+                out = ctx.paths.video_dense_around_changes / f"change_{change_idx:03d}" / f"{dense_i:04d}_{int(t*1000):08d}ms.png"
+                save_bgr_frame(ctx, frame, out)
+                dense_paths.append(out)
+                dense_i += 1
+                t += args.video_dense_every_seconds
+
+    cap.release()
+
+    write_csv_rows(ctx, ctx.paths.manifests / "video_timeline.csv", timeline_rows, [
+        "index", "ms", "seconds", "frame_path", "change_score", "scene_change", "popup_candidate", "console_change", "console_score", "crops",
+    ])
+    timeline_txt = "\n".join(
+        f"{row['seconds']:08.3f}s | change={row['change_score']} | scene={row['scene_change']} | popup={row['popup_candidate']} | console={row['console_change']} | {row['frame_path']}"
+        for row in timeline_rows
+    ) + "\n"
+    write_text(ctx, ctx.paths.manifests / "video_timeline.txt", timeline_txt)
+
+    if sampled_paths:
+        safe_call(ctx, "VIDEO_CONTACT_SHEET_ALL", create_contact_sheet_from_paths, ctx, sampled_paths, ctx.paths.contact_sheets / "video_contact_sheet_all.png", args.video_contact_cols, args.video_thumb_width)
+    if scene_paths:
+        safe_call(ctx, "VIDEO_CONTACT_SHEET_SCENE_CHANGES", create_contact_sheet_from_paths, ctx, scene_paths, ctx.paths.contact_sheets / "video_contact_sheet_scene_changes.png", args.video_contact_cols, args.video_thumb_width)
+    if popup_paths:
+        safe_call(ctx, "VIDEO_CONTACT_SHEET_POPUPS", create_contact_sheet_from_paths, ctx, popup_paths, ctx.paths.contact_sheets / "video_contact_sheet_popup_candidates.png", args.video_contact_cols, args.video_thumb_width)
+    if console_paths:
+        safe_call(ctx, "VIDEO_CONTACT_SHEET_CONSOLE", create_contact_sheet_from_paths, ctx, console_paths, ctx.paths.contact_sheets / "video_contact_sheet_console_changes.png", args.video_contact_cols, args.video_thumb_width)
+
+    video_meta = {
+        "fps": fps,
+        "total_frames": total_frames,
+        "duration_seconds": duration,
+        "width": width,
+        "height": height,
+        "sampled_frame_count": len(sampled_paths),
+        "scene_change_count": len(scene_paths),
+        "popup_candidate_count": len(popup_paths),
+        "console_change_count": len(console_paths),
+        "dense_frame_count": len(dense_paths),
+        "every_seconds": args.video_every_seconds,
+        "start_seconds": args.video_start_seconds,
+        "end_seconds": args.video_end_seconds,
+        "crop_names": sorted(ctx.crop_rects.keys()),
+    }
+    write_json(ctx, ctx.paths.manifests / "video_manifest.json", video_meta)
+    ctx.manifest["video"] = video_meta
+    ctx.summary.append(f"WHAT WAS EXTRACTED: video sampled frames, timeline CSV/TXT, contact sheets, scene changes, popup candidates, console changes, dense frames. Sampled={len(sampled_paths)}.")
+
+# =============================================================================
+# LABEL: UNKNOWN HANDLER
+# =============================================================================
+
+def handle_unknown_file(ctx: IntakeContext) -> None:
+    ctx.summary.append("WHAT WAS EXTRACTED: common metadata and SHA256 only. File type is not supported by a specific handler.")
+    ctx.manifest["unknown"] = {"extension": ctx.input_path.suffix.lower(), "status": "metadata_only"}
+
+# =============================================================================
+# LABEL: ROUTER / MAIN
+# =============================================================================
+
+def route_by_file_type(ctx: IntakeContext, args: argparse.Namespace) -> None:
+    ext = ctx.input_path.suffix.lower()
+    log_line(ctx, "INFO", "ROUTE BY FILE TYPE", {"extension": ext})
+
+    # Python 3.10+ match/case router. This intentionally resembles switch/case.
+    match ext:
+        case e if e in HTML_EXTENSIONS:
+            handle_html_file(ctx, args.encoding)
+        case e if e in SUBTITLE_EXTENSIONS:
+            handle_subtitle_file(ctx, args.encoding)
+        case e if e in DOCX_EXTENSIONS:
+            handle_docx_file(ctx)
+        case e if e in PDF_EXTENSIONS:
+            handle_pdf_file(ctx, args.max_pdf_pages_render)
+        case e if e in IMAGE_EXTENSIONS:
+            handle_image_file(ctx)
+        case e if e in VIDEO_EXTENSIONS:
+            handle_video_file(ctx, args)
+        case e if e in TEXT_EXTENSIONS:
+            handle_text_like_file(ctx, args.encoding)
+        case _:
+            # Last-chance text attempt for small unknown files.
+            try:
+                if ctx.input_path.stat().st_size <= args.unknown_text_probe_max_bytes:
+                    handle_text_like_file(ctx, args.encoding)
+                    ctx.manifest["unknown_probe"] = {"status": "read_as_text"}
+                else:
+                    handle_unknown_file(ctx)
+            except Exception:
+                handle_unknown_file(ctx)
+
+
+def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Prepare uploaded files for analysis into a unified output package.")
+    parser.add_argument("--input", required=True, help="Input file path")
+    parser.add_argument("--out", required=True, help="Output folder")
+    parser.add_argument("--encoding", default=None, help="Force text encoding, otherwise auto-try common encodings")
+    parser.add_argument("--keyword", action="append", default=[], help="Extra keyword to search for. Can be repeated.")
+    parser.add_argument("--keywords-file", default=None, help="Optional text file with one keyword per line")
+    parser.add_argument("--crop", action="append", default=[], help="Named crop, format name=x,y,w,h. Can be repeated.")
+    parser.add_argument("--no-copy-original", action="store_true", help="Do not copy original file into output/original")
+    parser.add_argument("--unknown-text-probe-max-bytes", type=int, default=2_000_000, help="Try reading unknown files as text when <= this size")
+
+    # PDF options
+    parser.add_argument("--max-pdf-pages-render", type=int, default=50, help="Max PDF pages to render when PyMuPDF is available")
+
+    # Video options
+    parser.add_argument("--video-every-seconds", type=float, default=1.0, help="Sample video every N seconds")
+    parser.add_argument("--video-start-seconds", type=float, default=0.0, help="Video start second")
+    parser.add_argument("--video-end-seconds", type=float, default=None, help="Optional video end second")
+    parser.add_argument("--video-contact-cols", type=int, default=4, help="Video contact sheet columns")
+    parser.add_argument("--video-thumb-width", type=int, default=360, help="Video contact sheet thumb width")
+    parser.add_argument("--video-change-threshold", type=float, default=12.0, help="Scene/popup change threshold")
+    parser.add_argument("--video-console-change-threshold", type=float, default=6.0, help="Console crop change threshold")
+    parser.add_argument("--no-video-dense", action="store_true", help="Disable dense extraction around scene changes")
+    parser.add_argument("--video-dense-window-seconds", type=float, default=2.0, help="Dense extraction window before/after scene changes")
+    parser.add_argument("--video-dense-every-seconds", type=float, default=0.2, help="Dense extraction interval")
+    parser.add_argument("--max-dense-events", type=int, default=20, help="Max scene-change events for dense extraction")
+    return parser.parse_args(argv)
+
+
+def main(argv: Optional[list[str]] = None) -> int:
+    args = parse_args(argv)
+    ctx = init_context(args)
+    try:
+        if not ctx.input_path.exists():
+            raise FileNotFoundError(f"Input file does not exist: {ctx.input_path}")
+        metadata = collect_file_metadata(ctx)
+        if not args.no_copy_original:
+            copy_file(ctx, ctx.input_path, ctx.paths.original / ctx.input_path.name)
+        ctx.manifest["options"] = vars(args)
+        route_by_file_type(ctx, args)
+        return_code = 0 if not ctx.errors else 2
+    except Exception as exc:
+        record_error(ctx, "MAIN", exc)
+        return_code = 1
+    finally:
+        try:
+            finalize_outputs(ctx)
+        except Exception as exc:
+            # Last-resort stderr to avoid silent failure.
+            print(f"FINALIZE ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
+            traceback.print_exc()
+            return_code = 1
+    return return_code
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
