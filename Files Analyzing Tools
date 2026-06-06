@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# FilesAnalyzingTools protocol/source:
+# https://raw.githubusercontent.com/Rasputin4149u/ChatGpt/refs/heads/main/Files%20Analyzing%20Tools
 # =============================================================================
 # QUICK READ HEADER FOR CHATGPT / HUMAN REVIEWER
 # =============================================================================
@@ -12,8 +14,10 @@
 #   INPUT FILE -> detect extension -> switch/case handler -> unified outputs.
 #
 # Supported families:
-#   text/log/code/config: .txt .log .md .json .xml .ini .cfg .conf .ps1 .psm1
-#                         .bat .cmd .js .css .py .csv .tsv .reg
+#   text/log/config:      .txt .log .md .json .xml .ini .cfg .conf .csv .tsv
+#   code/debug:           .ps1 .psm1 .psd1 .ps1xml .bat .cmd .js .jsx .ts .tsx
+#                         .css .py .vbs .vbe .ahk .reg
+#                         code/debug files also write an Icoding protocol notice
 #   html:                 .html .htm
 #   subtitles:            .srt .vtt
 #   Word:                 .docx
@@ -22,14 +26,14 @@
 #   video:                .mp4 .mov .mkv .avi .webm .m4v
 #
 # Standard command:
-#   python prepare_uploaded_file_for_analysis_AN_ADD_ON_universal_intake_LinkV2_QuickHeader.py ^
+#   python prepare_uploaded_file_for_analysis_AN_ADD_ON_universal_intake_LinkV3_CodeProtocolHeader.py ^
 #     --input "C:\work\file.ext" ^
 #     --out "C:\work\prepared_file"
 #
 # Useful video/debug options:
 #   --video-every-seconds 1
-#   --start-seconds 0
-#   --end-seconds 30
+#   --video-start-seconds 0
+#   --video-end-seconds 30
 #   --crop console=20,80,1500,820
 #   --crop popup=350,150,750,500
 #
@@ -37,11 +41,19 @@
 #   analysis_summary.txt
 #   manifests/manifest.json
 #   logs/extraction_log.txt
+#   metadata/code_file_protocol_notice.txt (for code/debug files)
 #   extracted_text/*_numbered_lines.txt
 #   contact_sheets/*.png
 #   subtitles/srt_timeline.csv or subtitles/vtt_timeline.csv
 #   video_scene_changes/timeline.csv
 #
+#
+# Code-file routing protocol:
+#   If input extension is .js .jsx .ts .tsx .py .ps1 .psm1 .psd1 .ps1xml
+#   .bat .cmd .vbs .vbe .ahk .reg or .css, this tool marks the file as a
+#   coding/debugging artifact and writes a protocol notice into the output.
+#   Before editing, fixing, generating, or validating code, load and apply:
+#   https://raw.githubusercontent.com/Rasputin4149u/ChatGpt/refs/heads/main/Icoding
 # Safety rules:
 #   - Does not modify the original file.
 #   - Does not use the internet.
@@ -57,7 +69,7 @@
 # =============================================================================
 
 r"""
-prepare_uploaded_file_for_analysis_AN_ADD_ON_universal_intake_LinkV2_QuickHeader.py
+prepare_uploaded_file_for_analysis_AN_ADD_ON_universal_intake_LinkV3_CodeProtocolHeader.py
 
 Universal uploaded-file intake helper for manual/AI analysis.
 
@@ -67,9 +79,10 @@ Purpose
 - Extract available text/metadata/tables/links/images/previews.
 - Render or sample visual media when optional dependencies are available.
 - Write a unified manifest, summary, and log.
+- Code protocol routing: code/debug files create a protocol notice pointing to Icoding before code editing/debugging.
 
 Supported file families
-- Text/log/csv: .txt .log .csv .tsv .json .xml .ps1 .bat .cmd .js .py .htm/.html fallback
+- Text/log/csv/code: .txt .log .csv .tsv .json .xml .ps1 .psm1 .psd1 .ps1xml .bat .cmd .js .jsx .ts .tsx .py .vbs .vbe .ahk .reg .css .htm/.html fallback
 - HTML: .html .htm
 - Subtitles/transcripts: .srt .vtt
 - DOCX: .docx
@@ -85,11 +98,11 @@ Dependencies
   - PyMuPDF (fitz), pypdf, or PyPDF2 for PDF extraction/rendering
 
 Examples
-python prepare_uploaded_file_for_analysis_AN_ADD_ON_universal_intake_LinkV2_QuickHeader.py ^
+python prepare_uploaded_file_for_analysis_AN_ADD_ON_universal_intake_LinkV3_CodeProtocolHeader.py ^
   --input "C:\work\evidence.pdf" ^
   --out "C:\work\prepared_evidence"
 
-python prepare_uploaded_file_for_analysis_AN_ADD_ON_universal_intake_LinkV2_QuickHeader.py ^
+python prepare_uploaded_file_for_analysis_AN_ADD_ON_universal_intake_LinkV3_CodeProtocolHeader.py ^
   --input "C:\work\recording.mp4" ^
   --out "C:\work\prepared_recording" ^
   --video-every-seconds 1 ^
@@ -122,8 +135,15 @@ from xml.etree import ElementTree as ET
 # LABEL: CONSTANTS / DEFAULTS
 # =============================================================================
 
-SCRIPT_VERSION = "V2-QuickHeader"
-SCRIPT_NAME = "prepare_uploaded_file_for_analysis_AN_ADD_ON_universal_intake_LinkV2_QuickHeader.py"
+SCRIPT_VERSION = "V3-CodeProtocolHeader"
+SCRIPT_NAME = "prepare_uploaded_file_for_analysis_AN_ADD_ON_universal_intake_LinkV3_CodeProtocolHeader.py"
+
+CODING_PROTOCOL_URL = "https://raw.githubusercontent.com/Rasputin4149u/ChatGpt/refs/heads/main/Icoding"
+
+CODE_FILE_EXTENSIONS = {
+    ".js", ".jsx", ".ts", ".tsx", ".py", ".ps1", ".psm1", ".psd1", ".ps1xml",
+    ".bat", ".cmd", ".vbs", ".vbe", ".ahk", ".reg", ".css",
+}
 
 DEFAULT_KEYWORDS = [
     "error", "warning", "warn", "failed", "fail", "exception", "access denied",
@@ -133,8 +153,10 @@ DEFAULT_KEYWORDS = [
 ]
 
 TEXT_EXTENSIONS = {
-    ".txt", ".log", ".md", ".json", ".xml", ".ini", ".cfg", ".conf", ".ps1", ".psm1",
-    ".bat", ".cmd", ".js", ".css", ".py", ".csv", ".tsv", ".reg",
+    ".txt", ".log", ".md", ".json", ".xml", ".ini", ".cfg", ".conf",
+    ".ps1", ".psm1", ".psd1", ".ps1xml", ".bat", ".cmd",
+    ".js", ".jsx", ".ts", ".tsx", ".css", ".py", ".vbs", ".vbe", ".ahk",
+    ".csv", ".tsv", ".reg",
 }
 HTML_EXTENSIONS = {".html", ".htm"}
 SUBTITLE_EXTENSIONS = {".srt", ".vtt"}
@@ -386,6 +408,58 @@ def collect_file_metadata(ctx: IntakeContext) -> dict[str, Any]:
     ctx.summary.append(f"INPUT FILE: {path}")
     ctx.summary.append(f"SHA256: {metadata['sha256']}")
     return metadata
+
+
+
+def is_code_file(input_path: Path) -> bool:
+    # Purpose: Return True when the file extension should activate the code/debugging protocol notice.
+    # Params : input_path - source file path.
+    # Return : bool - True for code/debug extensions, False otherwise.
+    return input_path.suffix.lower() in CODE_FILE_EXTENSIONS
+
+
+def add_code_file_protocol_notice(ctx: IntakeContext) -> None:
+    # Purpose: Write an explicit Icoding-routing notice for code/debug files.
+    # Params : ctx - current intake context.
+    # Return : None. Updates manifest, summary, metadata output, and log.
+    if not is_code_file(ctx.input_path):
+        return
+
+    notice = (
+        "CODE FILE DETECTED\n"
+        "==================\n\n"
+        f"Input file: {ctx.input_path.name}\n"
+        f"Extension: {ctx.input_path.suffix.lower()}\n\n"
+        "Routing rule:\n"
+        "This file should be handled as a coding/debugging artifact.\n"
+        "Before editing, fixing, generating, patching, or validating code, load and apply:\n"
+        f"{CODING_PROTOCOL_URL}\n\n"
+        "Reading-only extraction may continue normally through this universal intake tool.\n"
+        "Code changes should follow the active coding/debugging protocol, including clear logic,\n"
+        "step-based debugging, validation, version control, and structured error/debug logging.\n"
+    )
+
+    notice_path = ctx.paths.metadata / "code_file_protocol_notice.txt"
+    write_text(ctx, notice_path, notice)
+
+    protocol_data = {
+        "is_code_file": True,
+        "extension": ctx.input_path.suffix.lower(),
+        "protocol_name": "Icoding",
+        "protocol_url": CODING_PROTOCOL_URL,
+        "notice_path": str(notice_path),
+        "rule": "Load/apply Icoding before code editing, fixing, generation, patching, debugging, or validation.",
+    }
+    write_json(ctx, ctx.paths.metadata / "code_file_protocol.json", protocol_data)
+    ctx.manifest["code_file_protocol"] = protocol_data
+    ctx.summary.append("CODE FILE DETECTED: apply Icoding before code editing/debugging/validation.")
+    ctx.summary.append(f"CODE PROTOCOL URL: {CODING_PROTOCOL_URL}")
+    log_line(
+        ctx,
+        "INFO",
+        "add_code_file_protocol_notice line=CODE_PROTOCOL_NOTICE_WRITTEN",
+        {"extension": ctx.input_path.suffix.lower(), "protocol_url": CODING_PROTOCOL_URL},
+    )
 
 
 def finalize_outputs(ctx: IntakeContext) -> None:
@@ -1301,6 +1375,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         if not ctx.input_path.exists():
             raise FileNotFoundError(f"Input file does not exist: {ctx.input_path}")
         metadata = collect_file_metadata(ctx)
+        safe_call(ctx, "CODE_FILE_PROTOCOL_CHECK", add_code_file_protocol_notice, ctx)
         if not args.no_copy_original:
             copy_file(ctx, ctx.input_path, ctx.paths.original / ctx.input_path.name)
         ctx.manifest["options"] = vars(args)
