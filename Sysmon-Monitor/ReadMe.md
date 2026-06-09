@@ -65,20 +65,8 @@ script[1-2]
 5. File Naming Rules
 Assistant publishes script files using this format only:
 WorkingScript/script[NN]_Sysmon-Monitor.ps1
-User names and indexes logs:
-Logs/log[NN]_console-output.txt
-User names and indexes data files:
-DataToAnalyze/data[NN]_alert.csv
-DataToAnalyze/data[NN]_alert.txt
-User names and indexes backups:
-Backups/backup[NN-1]_Sysmon-Monitor.ps1
-Recommendations use:
-Recommendations/recommendations[NN]_Sysmon-Monitor.md
-
-6. Change Notes Rule
-Every script line in this README should include a short change reminder.
 Example:
-├─ script[04]_Sysmon-Monitor.ps1   | changes: classification layer, selective Autoruns
+├─ Sysmon-Monitor[01].ps1   | changes: classification layer, selective Autoruns
 The file link may be written separately when needed.
 
 7. ChatGPT Working Rules
