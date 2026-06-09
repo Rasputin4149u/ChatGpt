@@ -1,0 +1,20 @@
+﻿[2026-06-07 01:40:30.081] [Set-SysmonAlertState.ps1 PID=15032] Started.
+[2026-06-07 01:40:30.088] [Set-SysmonAlertState.ps1 PID=15032] Requested State=UNSET
+[2026-06-07 01:40:30.091] [Set-SysmonAlertState.ps1 PID=15032] statePath=C:\Users\RASPUT~1\AppData\Local\Temp\Sysmon\sysmon_popup_state.txt
+[2026-06-07 01:40:30.092] [Set-SysmonAlertState.ps1 PID=15032] AlertPath=C:\Users\RASPUT~1\AppData\Local\Temp\Sysmon\sysmon_alert_state.txt
+[2026-06-07 01:40:30.097] [Set-SysmonAlertState.ps1 PID=15032] Wrote UNSET to AlertPath.
+[2026-06-07 02:03:33.871] [Set-SysmonAlertState.ps1 PID=14260] Started.
+[2026-06-07 02:03:33.877] [Set-SysmonAlertState.ps1 PID=14260] Requested State=UNSET
+[2026-06-07 02:03:33.879] [Set-SysmonAlertState.ps1 PID=14260] statePath=C:\Users\RASPUT~1\AppData\Local\Temp\Sysmon\sysmon_popup_state.txt
+[2026-06-07 02:03:33.881] [Set-SysmonAlertState.ps1 PID=14260] AlertPath=C:\Users\RASPUT~1\AppData\Local\Temp\Sysmon\sysmon_alert_state.txt
+[2026-06-07 02:03:33.887] [Set-SysmonAlertState.ps1 PID=14260] Wrote UNSET to AlertPath.
+[2026-06-07 02:38:34.068] [Set-SysmonAlertState.ps1 PID=13664] Started.
+[2026-06-07 02:38:34.073] [Set-SysmonAlertState.ps1 PID=13664] Requested State=UNSET
+[2026-06-07 02:38:34.075] [Set-SysmonAlertState.ps1 PID=13664] statePath=C:\Users\RASPUT~1\AppData\Local\Temp\Sysmon\sysmon_popup_state.txt
+[2026-06-07 02:38:34.076] [Set-SysmonAlertState.ps1 PID=13664] AlertPath=C:\Users\RASPUT~1\AppData\Local\Temp\Sysmon\sysmon_alert_state.txt
+[2026-06-07 02:38:34.081] [Set-SysmonAlertState.ps1 PID=13664] Wrote UNSET to AlertPath.
+[2026-06-09 08:43:47.649] [Set-SysmonAlertState.ps1 PID=17228] Started.
+[2026-06-09 08:43:47.659] [Set-SysmonAlertState.ps1 PID=17228] Requested State=SET
+[2026-06-09 08:43:47.663] [Set-SysmonAlertState.ps1 PID=17228] statePath=C:\Users\RASPUT~1\AppData\Local\Temp\Sysmon\sysmon_popup_state.txt
+[2026-06-09 08:43:47.667] [Set-SysmonAlertState.ps1 PID=17228] AlertPath=C:\Users\RASPUT~1\AppData\Local\Temp\Sysmon\sysmon_alert_state.txt
+[2026-06-09 08:43:47.679] [Set-SysmonAlertState.ps1 PID=17228] Wrote SET to AlertPath.

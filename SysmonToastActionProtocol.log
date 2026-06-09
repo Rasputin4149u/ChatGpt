@@ -1,0 +1,32 @@
+﻿[2026-06-07 01:40:29.748] [Invoke-SysmonToastAction.ps1 PID=18512] Started.
+[2026-06-07 01:40:29.756] [Invoke-SysmonToastAction.ps1 PID=18512] RawUri=[sysmontoast://alert-unset/]
+[2026-06-07 01:40:29.761] [Invoke-SysmonToastAction.ps1 PID=18512] ToastActionsPath=Z:\InsPro\Tools\Ps1\ToastActions
+[2026-06-07 01:40:29.764] [Invoke-SysmonToastAction.ps1 PID=18512] statePath=C:\Users\RASPUT~1\AppData\Local\Temp\Sysmon\sysmon_popup_state.txt
+[2026-06-07 01:40:29.766] [Invoke-SysmonToastAction.ps1 PID=18512] AlertPath=C:\Users\RASPUT~1\AppData\Local\Temp\Sysmon\sysmon_alert_state.txt
+[2026-06-07 01:40:29.789] [Invoke-SysmonToastAction.ps1 PID=18512] ParsedAction=[alert-unset]
+[2026-06-07 01:40:29.795] [Invoke-SysmonToastAction.ps1 PID=18512] Dispatching alert-unset to Z:\InsPro\Tools\Ps1\ToastActions\Set-SysmonAlertState.ps1 -State UNSET
+[2026-06-07 01:40:30.114] [Invoke-SysmonToastAction.ps1 PID=18512] Completed successfully.
+[2026-06-07 02:03:33.593] [Invoke-SysmonToastAction.ps1 PID=17772] Started.
+[2026-06-07 02:03:33.599] [Invoke-SysmonToastAction.ps1 PID=17772] RawUri=[sysmontoast://alert-unset/]
+[2026-06-07 02:03:33.602] [Invoke-SysmonToastAction.ps1 PID=17772] ToastActionsPath=Z:\InsPro\Tools\Ps1\ToastActions
+[2026-06-07 02:03:33.603] [Invoke-SysmonToastAction.ps1 PID=17772] statePath=C:\Users\RASPUT~1\AppData\Local\Temp\Sysmon\sysmon_popup_state.txt
+[2026-06-07 02:03:33.606] [Invoke-SysmonToastAction.ps1 PID=17772] AlertPath=C:\Users\RASPUT~1\AppData\Local\Temp\Sysmon\sysmon_alert_state.txt
+[2026-06-07 02:03:33.619] [Invoke-SysmonToastAction.ps1 PID=17772] ParsedAction=[alert-unset]
+[2026-06-07 02:03:33.623] [Invoke-SysmonToastAction.ps1 PID=17772] Dispatching alert-unset to Z:\InsPro\Tools\Ps1\ToastActions\Set-SysmonAlertState.ps1 -State UNSET
+[2026-06-07 02:03:33.904] [Invoke-SysmonToastAction.ps1 PID=17772] Completed successfully.
+[2026-06-07 02:38:33.806] [Invoke-SysmonToastAction.ps1 PID=18256] Started.
+[2026-06-07 02:38:33.813] [Invoke-SysmonToastAction.ps1 PID=18256] RawUri=[sysmontoast://alert-unset/]
+[2026-06-07 02:38:33.816] [Invoke-SysmonToastAction.ps1 PID=18256] ToastActionsPath=Z:\InsPro\Tools\Ps1\ToastActions
+[2026-06-07 02:38:33.817] [Invoke-SysmonToastAction.ps1 PID=18256] statePath=C:\Users\RASPUT~1\AppData\Local\Temp\Sysmon\sysmon_popup_state.txt
+[2026-06-07 02:38:33.819] [Invoke-SysmonToastAction.ps1 PID=18256] AlertPath=C:\Users\RASPUT~1\AppData\Local\Temp\Sysmon\sysmon_alert_state.txt
+[2026-06-07 02:38:33.834] [Invoke-SysmonToastAction.ps1 PID=18256] ParsedAction=[alert-unset]
+[2026-06-07 02:38:33.837] [Invoke-SysmonToastAction.ps1 PID=18256] Dispatching alert-unset to Z:\InsPro\Tools\Ps1\ToastActions\Set-SysmonAlertState.ps1 -State UNSET
+[2026-06-07 02:38:34.097] [Invoke-SysmonToastAction.ps1 PID=18256] Completed successfully.
+[2026-06-09 08:43:46.931] [Invoke-SysmonToastAction.ps1 PID=2464] Started.
+[2026-06-09 08:43:46.952] [Invoke-SysmonToastAction.ps1 PID=2464] RawUri=[sysmontoast://alert-set/]
+[2026-06-09 08:43:46.961] [Invoke-SysmonToastAction.ps1 PID=2464] ToastActionsPath=Z:\InsPro\Tools\Ps1\ToastActions
+[2026-06-09 08:43:46.967] [Invoke-SysmonToastAction.ps1 PID=2464] statePath=C:\Users\RASPUT~1\AppData\Local\Temp\Sysmon\sysmon_popup_state.txt
+[2026-06-09 08:43:46.972] [Invoke-SysmonToastAction.ps1 PID=2464] AlertPath=C:\Users\RASPUT~1\AppData\Local\Temp\Sysmon\sysmon_alert_state.txt
+[2026-06-09 08:43:47.022] [Invoke-SysmonToastAction.ps1 PID=2464] ParsedAction=[alert-set]
+[2026-06-09 08:43:47.033] [Invoke-SysmonToastAction.ps1 PID=2464] Dispatching alert-set to Z:\InsPro\Tools\Ps1\ToastActions\Set-SysmonAlertState.ps1 -State SET
+[2026-06-09 08:43:47.707] [Invoke-SysmonToastAction.ps1 PID=2464] Completed successfully.
