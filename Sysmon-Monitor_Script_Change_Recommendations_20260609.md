@@ -1,6 +1,6 @@
 # Sysmon-Monitor Script Change Recommendations
 Generated: [09]:[06]:[2026] - [09]:[25]:[00] Asia/Jerusalem
-## [09]:[06]:[2026] - [09]:[25]:[00]Script to work on 
+## [09]:[06]:[2026] - [09]:[25]:[00] Script to work on 
 - https://raw.githubusercontent.com/Rasputin4149u/ChatGpt/refs/heads/main/Sysmon-Monitor.ps1
 ## [09]:[06]:[2026] - [09]:[25]:[01] Scope
 - This document lists recommended script changes only. It is not a patch plan and does not include code.
