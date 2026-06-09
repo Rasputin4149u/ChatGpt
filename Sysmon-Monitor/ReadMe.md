@@ -64,7 +64,7 @@ script[1-2]
 
 5. File Naming Rules
 Assistant publishes script files using this format only:
-WorkingScript/script[NN]_Sysmon-Monitor.ps1
+WorkingScript/Sysmon-Monitor[NN].ps1
 Example:
 ├─ Sysmon-Monitor[01].ps1   | changes: classification layer, selective Autoruns
 The file link may be written separately when needed.
