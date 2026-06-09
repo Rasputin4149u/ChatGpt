@@ -16,7 +16,7 @@ https://raw.githubusercontent.com/Rasputin4149u/ChatGpt/refs/heads/main/Sysmon-M
 Sysmon-Monitor/
 ├─ README.md
 ├─ WorkingScript/
-│  ├─ script[01]_Sysmon-Monitor.ps1   | changes: baseline working script
+│  ├─ Sysmon-Monitor[1].ps1   | changes: baseline working script
 │  
 │
 ├─ Logs/
