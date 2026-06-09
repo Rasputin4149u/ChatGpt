@@ -16,8 +16,8 @@ https://raw.githubusercontent.com/Rasputin4149u/ChatGpt/refs/heads/main/Sysmon-M
 Sysmon-Monitor/
 ├─ README.md
 ├─ WorkingScript/
-│  ├─ Sysmon-Monitor[1].ps1   | changes: baseline working script
-│  
+│  ├─ Sysmon-Monitor[2].ps1  | changes: classification layer before popup, targeted self-noise/evidence-only handling, sysmontoast:// route kept, selective Autoruns gating.
+│  └─ Sysmon-Monitor[1].log  | changes: baseline working script
 │
 ├─ Logs/
 │  ├─ Sysmon-Monitor[01].log 
@@ -32,26 +32,27 @@ Sysmon-Monitor/
 │
 ├─ Backups/
 │  ├─ Sysmon-Monitor[00].ps1
+│  ├─ Sysmon-Monitor[01].ps1
 │  
 │ 
 └─ Recommendations/
    └─ Sysmon-Monitor_Script_Change_Recommendations_20260609.md
 
-3. Current Index
+4. Current Index
 CURRENT_INDEX:
 01
 ACTIVE_SCRIPT:
-WorkingScript/Sysmon-Monitor[01].ps1
+WorkingScript/Sysmon-Monitor[02].ps1
 CURRENT_LOG:
 Logs/[log][01].log
 CURRENT_DATA:
 DataToAnalyze/
 ROLLBACK_SCRIPT:
-Backups/Sysmon-Monitor[00].ps1
+Backups/Sysmon-Monitor[01].ps1
 ACTIVE_RECOMMENDATIONS:
 Recommendations/Sysmon-Monitor_Script_Change_Recommendations_20260609.md
 
-4. Version Rule
+5. Version Rule
 Every approved test cycle increments the integer index by 1.
 Use:
 script[01] -> log[01] -> data[01] -> backup[00]
@@ -62,7 +63,7 @@ script[01_1]
 script[01_2]
 script[1-2]
 
-5. File Naming Rules
+6. File Naming Rules
 Assistant publishes script files using this format only:
 WorkingScript/Sysmon-Monitor[NN].ps1
 Example:
