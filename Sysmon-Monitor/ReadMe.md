@@ -1,4 +1,4 @@
-=== RAW_CHECK_ID: SysmonMonitor_README_0001 ===
+=== RAW_CHECK_ID: SysmonMonitor_README_0002 ===
 Sysmon Monitor Project Index
 GeneratedAt: 2026-06-09 10:10:30 Asia/Jerusalem
 Project: Sysmon-Monitor
@@ -16,8 +16,8 @@ https://raw.githubusercontent.com/Rasputin4149u/ChatGpt/refs/heads/main/Sysmon-M
 Sysmon-Monitor/
 ├─ README.md
 ├─ WorkingScript/
-│  ├─ Sysmon-Monitor[02].ps1  | changes: classification layer before popup, targeted self-noise/evidence-only handling, sysmontoast:// route kept, selective Autoruns gating.
-│  └─ Sysmon-Monitor[01].log  | changes: baseline working script
+│  ├─ Sysmon-Monitor[02].ps1  | baseline working scriptת changes: classification layer before popup, targeted self-noise/evidence-only handling, sysmontoast:// route kept, selective Autoruns gating.
+│  └─ Sysmon-Monitor[01].log  | changes: 
 │
 ├─ Logs/
 │  ├─ Sysmon-Monitor[01].log 
