@@ -1,6 +1,7 @@
 # Sysmon-Monitor Script Change Recommendations
 Generated: [09]:[06]:[2026] - [09]:[25]:[00] Asia/Jerusalem
-
+## [09]:[06]:[2026] - [09]:[25]:[00]Script to work on 
+- https://raw.githubusercontent.com/Rasputin4149u/ChatGpt/refs/heads/main/Sysmon-Monitor.ps1
 ## [09]:[06]:[2026] - [09]:[25]:[01] Scope
 - This document lists recommended script changes only. It is not a patch plan and does not include code.
 - The purpose is to keep the next development session focused after cleanup.
@@ -10,6 +11,7 @@ Generated: [09]:[06]:[2026] - [09]:[25]:[00] Asia/Jerusalem
 - Display Popup has been confirmed to write sysmon_popup_state.txt and trigger the monitor popup.
 - The old raw powershell.exe/cmd.exe command-in-XML model should be treated as failed and removed from active code.
 - The biggest remaining risk is not the toast mechanism; it is self-noise and excessive popup classification.
+- 
 
 ## [09]:[06]:[2026] - [09]:[25]:[03] Latest alert package interpretation
 - Latest copied alert package: three EventID 11 file-create events from Firefox Developer Edition.
