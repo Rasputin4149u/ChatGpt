@@ -8,6 +8,8 @@ import android.graphics.PixelFormat;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager;
@@ -174,6 +176,7 @@ public class ManualTextAccessibilityService extends AccessibilityService {
         box.addView(title, menuButtonLayoutParams());
 
         box.addView(menuButton("Select all", this::selectAllFocusedText), menuButtonLayoutParams());
+        box.addView(menuButton("Start selection", this::startManualSelection), menuButtonLayoutParams());
         box.addView(menuButton("Copy", this::copyFocusedSelection), menuButtonLayoutParams());
         box.addView(menuButton("Paste", this::pasteIntoFocusedText), menuButtonLayoutParams());
         box.addView(menuButton("Close", this::hideMenu), menuButtonLayoutParams());
@@ -206,30 +209,58 @@ public class ManualTextAccessibilityService extends AccessibilityService {
     }
 
     private void selectAllFocusedText() {
-        AccessibilityNodeInfo node = findFocusedEditableNode();
+        AccessibilityNodeInfo node = findFocusedSelectableNode();
         if (node == null) {
-            showToast("No editable field selected");
+            showToast("No selectable text found");
             return;
         }
 
         try {
-            CharSequence text = node.getText();
-            int length = text == null ? 0 : text.length();
-            Bundle args = new Bundle();
-            args.putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, 0);
-            args.putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, length);
-            boolean ok = node.performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, args);
-            showToast(ok ? "Selected all" : "Select all blocked");
-            StrictLogger.logLine(ok ? "INFO" : "WARNING", "Select all result: " + ok);
+            boolean ok = trySetSelectionRange(node, 0, getNodeTextLength(node));
+            if (ok) {
+                showToast("Selected all");
+                StrictLogger.logLine("INFO", "Select all result: true");
+                return;
+            }
+
+            boolean longClickOk = tryOpenSelectionHandles(node);
+            if (longClickOk) {
+                showToast("Selection menu opened");
+                StrictLogger.logLine("WARNING", "Select all direct action blocked; opened selection menu fallback");
+                clickSelectAllMenuItemDelayed();
+                return;
+            }
+
+            showToast("Select all blocked");
+            StrictLogger.logLine("WARNING", "Select all result: false");
+        } finally {
+            node.recycle();
+        }
+    }
+
+    private void startManualSelection() {
+        AccessibilityNodeInfo node = findFocusedSelectableNode();
+        if (node == null) {
+            showToast("No selectable text found");
+            return;
+        }
+
+        try {
+            boolean ok = tryOpenSelectionHandles(node);
+            if (!ok) {
+                ok = tryExtendSelectionByWord(node);
+            }
+            showToast(ok ? "Selection started" : "Selection blocked");
+            StrictLogger.logLine(ok ? "INFO" : "WARNING", "Start selection result: " + ok);
         } finally {
             node.recycle();
         }
     }
 
     private void copyFocusedSelection() {
-        AccessibilityNodeInfo node = findFocusedEditableNode();
+        AccessibilityNodeInfo node = findFocusedCopyNode();
         if (node == null) {
-            showToast("No editable field selected");
+            showToast("No selected text found");
             return;
         }
 
@@ -259,6 +290,242 @@ public class ManualTextAccessibilityService extends AccessibilityService {
         } finally {
             node.recycle();
         }
+    }
+
+    private boolean trySetSelectionRange(AccessibilityNodeInfo node, int start, int end) {
+        if (node == null) {
+            return false;
+        }
+        if (!supportsActionId(node, AccessibilityNodeInfo.ACTION_SET_SELECTION)) {
+            return false;
+        }
+
+        Bundle args = new Bundle();
+        args.putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, Math.max(0, start));
+        args.putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, Math.max(0, end));
+        return node.performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, args);
+    }
+
+    private boolean tryOpenSelectionHandles(AccessibilityNodeInfo node) {
+        if (node == null) {
+            return false;
+        }
+        if (!supportsActionId(node, AccessibilityNodeInfo.ACTION_LONG_CLICK)) {
+            return false;
+        }
+        return node.performAction(AccessibilityNodeInfo.ACTION_LONG_CLICK);
+    }
+
+    private boolean tryExtendSelectionByWord(AccessibilityNodeInfo node) {
+        if (node == null) {
+            return false;
+        }
+        if (!supportsActionId(node, AccessibilityNodeInfo.ACTION_NEXT_AT_MOVEMENT_GRANULARITY)) {
+            return false;
+        }
+
+        Bundle args = new Bundle();
+        args.putInt(
+                AccessibilityNodeInfo.ACTION_ARGUMENT_MOVEMENT_GRANULARITY_INT,
+                AccessibilityNodeInfo.MOVEMENT_GRANULARITY_WORD
+        );
+        args.putBoolean(AccessibilityNodeInfo.ACTION_ARGUMENT_EXTEND_SELECTION_BOOLEAN, true);
+        return node.performAction(AccessibilityNodeInfo.ACTION_NEXT_AT_MOVEMENT_GRANULARITY, args);
+    }
+
+    private int getNodeTextLength(AccessibilityNodeInfo node) {
+        if (node == null || node.getText() == null) {
+            return 0;
+        }
+        return node.getText().length();
+    }
+
+    private void clickSelectAllMenuItemDelayed() {
+        Handler handler = new Handler(Looper.getMainLooper());
+        handler.postDelayed(() -> {
+            try {
+                boolean ok = clickFirstVisibleNodeByText("Select all")
+                        || clickFirstVisibleNodeByText("Select all text")
+                        || clickFirstVisibleNodeByText("בחר הכל");
+                StrictLogger.logLine(ok ? "INFO" : "WARNING", "Delayed Select all menu click result: " + ok);
+                if (ok) {
+                    showToast("Select all requested");
+                }
+            } catch (Exception ex) {
+                StrictLogger.logLine("ERROR", "Delayed Select all menu click failed", ex);
+            }
+        }, 350L);
+    }
+
+    private boolean clickFirstVisibleNodeByText(String text) {
+        AccessibilityNodeInfo root = getRootInActiveWindow();
+        if (root == null) {
+            StrictLogger.logLine("WARNING", "No active window root available while looking for menu text: " + text);
+            return false;
+        }
+
+        try {
+            List<AccessibilityNodeInfo> matches = root.findAccessibilityNodeInfosByText(text);
+            if (matches == null) {
+                return false;
+            }
+
+            for (AccessibilityNodeInfo match : matches) {
+                if (match == null) {
+                    continue;
+                }
+                try {
+                    AccessibilityNodeInfo clickableNode = findClickableAncestorOrSelf(match);
+                    if (clickableNode == null) {
+                        continue;
+                    }
+                    try {
+                        if (clickableNode.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                            return true;
+                        }
+                    } finally {
+                        clickableNode.recycle();
+                    }
+                } finally {
+                    match.recycle();
+                }
+            }
+            return false;
+        } finally {
+            root.recycle();
+        }
+    }
+
+    private AccessibilityNodeInfo findClickableAncestorOrSelf(AccessibilityNodeInfo node) {
+        AccessibilityNodeInfo current = AccessibilityNodeInfo.obtain(node);
+        while (current != null) {
+            if (supportsActionId(current, AccessibilityNodeInfo.ACTION_CLICK) || current.isClickable()) {
+                return current;
+            }
+
+            AccessibilityNodeInfo parent = current.getParent();
+            current.recycle();
+            current = parent;
+        }
+        return null;
+    }
+
+    private AccessibilityNodeInfo findFocusedSelectableNode() {
+        return findFocusedNodeMatchingMode(SearchMode.SELECTABLE_TEXT);
+    }
+
+    private AccessibilityNodeInfo findFocusedCopyNode() {
+        AccessibilityNodeInfo node = findFocusedNodeMatchingMode(SearchMode.COPY_TARGET);
+        if (node != null) {
+            return node;
+        }
+        return findFocusedEditableNode();
+    }
+
+    private AccessibilityNodeInfo findFocusedNodeMatchingMode(SearchMode mode) {
+        AccessibilityNodeInfo root = getRootInActiveWindow();
+        if (root == null) {
+            StrictLogger.logLine("WARNING", "No active window root available");
+            return null;
+        }
+
+        AccessibilityNodeInfo inputFocus = null;
+        AccessibilityNodeInfo accessibilityFocus = null;
+        try {
+            inputFocus = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
+            if (isUsableNodeForMode(inputFocus, mode)) {
+                return AccessibilityNodeInfo.obtain(inputFocus);
+            }
+
+            accessibilityFocus = root.findFocus(AccessibilityNodeInfo.FOCUS_ACCESSIBILITY);
+            if (isUsableNodeForMode(accessibilityFocus, mode)) {
+                return AccessibilityNodeInfo.obtain(accessibilityFocus);
+            }
+
+            return findFocusedNodeByModeDepthFirst(root, mode);
+        } finally {
+            if (inputFocus != null) {
+                inputFocus.recycle();
+            }
+            if (accessibilityFocus != null) {
+                accessibilityFocus.recycle();
+            }
+            root.recycle();
+        }
+    }
+
+    private AccessibilityNodeInfo findFocusedNodeByModeDepthFirst(AccessibilityNodeInfo node, SearchMode mode) {
+        if (node == null) {
+            return null;
+        }
+        if (isUsableNodeForMode(node, mode)) {
+            return AccessibilityNodeInfo.obtain(node);
+        }
+
+        int childCount = node.getChildCount();
+        for (int index = 0; index < childCount; index++) {
+            AccessibilityNodeInfo child = node.getChild(index);
+            if (child == null) {
+                continue;
+            }
+            try {
+                AccessibilityNodeInfo result = findFocusedNodeByModeDepthFirst(child, mode);
+                if (result != null) {
+                    return result;
+                }
+            } finally {
+                child.recycle();
+            }
+        }
+        return null;
+    }
+
+    private boolean isUsableNodeForMode(AccessibilityNodeInfo node, SearchMode mode) {
+        if (node == null || mode == null) {
+            return false;
+        }
+        if (!node.isFocused() && !node.isAccessibilityFocused()) {
+            return false;
+        }
+
+        switch (mode) {
+            case SELECTABLE_TEXT:
+                return hasVisibleText(node)
+                        && (supportsActionId(node, AccessibilityNodeInfo.ACTION_SET_SELECTION)
+                        || supportsActionId(node, AccessibilityNodeInfo.ACTION_LONG_CLICK)
+                        || supportsActionId(node, AccessibilityNodeInfo.ACTION_COPY)
+                        || supportsActionId(node, AccessibilityNodeInfo.ACTION_NEXT_AT_MOVEMENT_GRANULARITY));
+            case COPY_TARGET:
+                return supportsActionId(node, AccessibilityNodeInfo.ACTION_COPY);
+            default:
+                return false;
+        }
+    }
+
+    private boolean hasVisibleText(AccessibilityNodeInfo node) {
+        return node != null && node.getText() != null && node.getText().length() > 0;
+    }
+
+    private boolean supportsActionId(AccessibilityNodeInfo node, int actionId) {
+        if (node == null) {
+            return false;
+        }
+
+        List<AccessibilityNodeInfo.AccessibilityAction> actions = node.getActionList();
+        if (actions == null) {
+            return false;
+        }
+        for (AccessibilityNodeInfo.AccessibilityAction action : actions) {
+            if (action != null && action.getId() == actionId) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private enum SearchMode {
+        SELECTABLE_TEXT,
+        COPY_TARGET
     }
 
     private AccessibilityNodeInfo findFocusedEditableNode() {
