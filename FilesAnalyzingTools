@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
+X10THINK
 # =============================================================================
+#
 # GENERAL INSTRUCTIONS HEADER (FOR ALL MODES)
 # Icoding Version: LinkV4_StrictIcodingLogger
 # Short description: Strict Icoding logger requirement. Any logger helper named log_line(), Write-DebugLine(), or equivalent must auto-add caller function name and caller code line number to every log event.
