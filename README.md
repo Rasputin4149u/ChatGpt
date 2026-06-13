@@ -1,66 +1,67 @@
-# GENERAL INSTRUCTIONS HEADER (FOR ALL MODES)
+# AndroidAccessibilityCopyPasteHelper LinkV1
+
+GeneratedAt: 2026-06-12 22:21:32 Asia/Jerusalem
 
 ## Purpose
 
-This header defines the base behavior rules for all interactions.
-It must be applied before any mode-specific instructions.
+Private manual Android accessibility helper for difficult copy/paste/select-all operations.
 
----
+## Behavior
 
-## Core Behavior Rules
+Activation flow:
 
-* Work in structured, step-by-step format
-* Do not jump to conclusions
-* Do not assume missing data
-* If something is missing → ask and pause
+```text
+User taps Android accessibility shortcut / small person icon
+→ custom overlay menu opens
+→ user manually chooses Select all / Copy / Paste
+```
 
----
+## Non-goals / privacy posture
 
-## Communication Style
+- No `INTERNET` permission.
+- No analytics.
+- No background clipboard monitoring.
+- No automatic action on text-field focus.
+- No chat-history reading.
+- No upload.
+- The service ignores accessibility events unless the user manually activates the shortcut.
 
-* Be clear and direct
-* Avoid unnecessary verbosity
-* Use structured formatting (sections, bullets)
-* Keep explanations practical and actionable
+## Project files
 
----
+```text
+settings.gradle
+build.gradle
+app/build.gradle
+app/src/main/AndroidManifest.xml
+app/src/main/res/xml/accessibility_service_config.xml
+app/src/main/res/values/strings.xml
+app/src/main/res/values/styles.xml
+app/src/main/java/com/rasputin/accessibilitycopyhelper/MainActivity.java
+app/src/main/java/com/rasputin/accessibilitycopyhelper/ManualTextAccessibilityService.java
+app/src/main/java/com/rasputin/accessibilitycopyhelper/StrictLogger.java
+```
 
-## Execution Discipline
+## Build in Android Studio
 
-* Follow instructions exactly as written
-* Do not override rules unless explicitly instructed
-* Respect defined workflows (coding / debugging / analysis)
+1. Open the project folder in Android Studio.
+2. Let Android Studio sync Gradle.
+3. Build APK from:
 
----
+```text
+Build → Build App Bundle(s) / APK(s) → Build APK(s)
+```
 
-## Context Handling
+## Device setup
 
-* Treat current instruction as active context
-* Do not rely on memory from previous chats
-* Apply rules consistently throughout the session
-
----
-
-## Priority Order
-
-1. Safety constraints
-2. System instructions
-3. User instructions
-4. Mode-specific instructions
-
----
-
-## Output Expectations
-
-* Responses must be logically structured
-* Important points must be clearly separated
-* Avoid ambiguity
-* Maintain consistency across responses
-
----
+1. Install the APK.
+2. Open the app.
+3. Tap **Open Accessibility Settings**.
+4. Enable **Manual Copy Paste Helper**.
+5. Attach it to the Android accessibility shortcut / small person icon in Android Accessibility settings.
+6. Open any app with an editable text field.
+7. Tap the accessibility shortcut.
+8. Use the manual menu.
 
 ## Notes
 
-* This header is always active
-* Mode-specific instructions extend this behavior, not replace it
-* Any conflict must follow the defined priority order
+The optional **Write / Insert Text** feature is intentionally not implemented in LinkV1 because it can easily become unsafe if it stores text or steals focus. Add it later only as a deliberate preset/input feature after separate approval.
