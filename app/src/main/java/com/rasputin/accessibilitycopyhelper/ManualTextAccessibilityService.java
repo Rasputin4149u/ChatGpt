@@ -3,9 +3,6 @@ package com.rasputin.accessibilitycopyhelper;
 import android.accessibilityservice.AccessibilityButtonController;
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.AccessibilityServiceInfo;
-import android.content.ClipData;
-import android.content.ClipboardManager;
-import android.content.Context;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.graphics.drawable.GradientDrawable;
@@ -31,13 +28,11 @@ import java.util.List;
  * Important behavior:
  * - no default action
  * - no automatic paste/copy/select on focus
- * - no clipboard background reading
+ * - no clipboard reading
  * - no internet permission
  * - menu opens only when the accessibility shortcut/button calls this service
  */
 public class ManualTextAccessibilityService extends AccessibilityService {
-    private static final long CONTEXT_MENU_CLICK_DELAY_MS = 350L;
-
     private WindowManager windowManager;
     private View menuView;
     private AccessibilityButtonController.AccessibilityButtonCallback accessibilityButtonCallback;
@@ -214,10 +209,9 @@ public class ManualTextAccessibilityService extends AccessibilityService {
     }
 
     private void selectAllFocusedText() {
-        AccessibilityNodeInfo node = findBestNodeForManualAction(TargetMode.SELECT_ALL);
+        AccessibilityNodeInfo node = findFocusedSelectableNode();
         if (node == null) {
-            showToast("No text target found");
-            StrictLogger.logLine("WARNING", "Select all target not found");
+            showToast("No selectable text found");
             return;
         }
 
@@ -225,61 +219,37 @@ public class ManualTextAccessibilityService extends AccessibilityService {
             boolean ok = trySetSelectionRange(node, 0, getNodeTextLength(node));
             if (ok) {
                 showToast("Selected all");
-                StrictLogger.logLine("INFO", "Select all result: true by ACTION_SET_SELECTION");
+                StrictLogger.logLine("INFO", "Select all result: true");
                 return;
             }
 
-            ok = node.performAction(AccessibilityNodeInfo.ACTION_SELECT);
-            if (ok) {
-                showToast("Selection requested");
-                StrictLogger.logLine("INFO", "Select all fallback result: true by ACTION_SELECT");
-                clickSelectAllMenuItemDelayed();
-                return;
-            }
-
-            ok = tryOpenSelectionHandles(node);
-            if (ok) {
+            boolean longClickOk = tryOpenSelectionHandles(node);
+            if (longClickOk) {
                 showToast("Selection menu opened");
                 StrictLogger.logLine("WARNING", "Select all direct action blocked; opened selection menu fallback");
                 clickSelectAllMenuItemDelayed();
                 return;
             }
 
-            ok = tryExtendSelectionByWord(node);
-            if (ok) {
-                showToast("Selection started");
-                StrictLogger.logLine("WARNING", "Select all direct action blocked; movement selection fallback started");
-                clickSelectAllMenuItemDelayed();
-                return;
-            }
-
             showToast("Select all blocked");
-            StrictLogger.logLine("WARNING", "Select all result: false after broad fallbacks");
+            StrictLogger.logLine("WARNING", "Select all result: false");
         } finally {
             node.recycle();
         }
     }
 
     private void startManualSelection() {
-        AccessibilityNodeInfo node = findBestNodeForManualAction(TargetMode.START_SELECTION);
+        AccessibilityNodeInfo node = findFocusedSelectableNode();
         if (node == null) {
-            showToast("No text target found");
-            StrictLogger.logLine("WARNING", "Start selection target not found");
+            showToast("No selectable text found");
             return;
         }
 
         try {
             boolean ok = tryOpenSelectionHandles(node);
             if (!ok) {
-                ok = node.performAction(AccessibilityNodeInfo.ACTION_SELECT);
-            }
-            if (!ok) {
                 ok = tryExtendSelectionByWord(node);
             }
-            if (!ok && getNodeTextLength(node) > 0) {
-                ok = trySetSelectionRange(node, 0, Math.min(1, getNodeTextLength(node)));
-            }
-
             showToast(ok ? "Selection started" : "Selection blocked");
             StrictLogger.logLine(ok ? "INFO" : "WARNING", "Start selection result: " + ok);
         } finally {
@@ -288,89 +258,35 @@ public class ManualTextAccessibilityService extends AccessibilityService {
     }
 
     private void copyFocusedSelection() {
-        AccessibilityNodeInfo node = findBestNodeForManualAction(TargetMode.COPY);
+        AccessibilityNodeInfo node = findFocusedCopyNode();
         if (node == null) {
-            showToast("No copy target found");
-            StrictLogger.logLine("WARNING", "Copy target not found");
+            showToast("No selected text found");
             return;
         }
 
         try {
             boolean ok = node.performAction(AccessibilityNodeInfo.ACTION_COPY);
-            if (ok) {
-                showToast("Copied");
-                StrictLogger.logLine("INFO", "Copy result: true by ACTION_COPY");
-                return;
-            }
-
-            boolean menuOk = clickFirstVisibleNodeByText("Copy")
-                    || clickFirstVisibleNodeByText("Copy text")
-                    || clickFirstVisibleNodeByText("העתק");
-            if (menuOk) {
-                showToast("Copy requested");
-                StrictLogger.logLine("INFO", "Copy result: true by visible context menu click");
-                return;
-            }
-
-            boolean longClickOk = tryOpenSelectionHandles(node);
-            if (longClickOk) {
-                showToast("Copy menu requested");
-                StrictLogger.logLine("WARNING", "Copy direct action blocked; opened selection menu fallback");
-                clickCopyMenuItemDelayed();
-                return;
-            }
-
-            showToast("Copy blocked or no selection");
-            StrictLogger.logLine("WARNING", "Copy result: false after broad fallbacks");
+            showToast(ok ? "Copied" : "Copy blocked or no selection");
+            StrictLogger.logLine(ok ? "INFO" : "WARNING", "Copy result: " + ok);
         } finally {
             node.recycle();
         }
     }
 
     private void pasteIntoFocusedText() {
-        AccessibilityNodeInfo node = findBestNodeForManualAction(TargetMode.PASTE);
+        AccessibilityNodeInfo node = findFocusedEditableNode();
         if (node == null) {
-            showToast("No paste target found");
-            StrictLogger.logLine("WARNING", "Paste target not found");
+            showToast("No editable field selected");
             return;
         }
 
         try {
             boolean ok = node.performAction(AccessibilityNodeInfo.ACTION_PASTE);
+            showToast(ok ? "Pasted" : "Paste blocked or clipboard empty");
+            StrictLogger.logLine(ok ? "INFO" : "WARNING", "Paste result: " + ok);
             if (ok) {
-                showToast("Pasted");
-                StrictLogger.logLine("INFO", "Paste result: true by ACTION_PASTE");
                 hideMenu();
-                return;
             }
-
-            boolean directMenuOk = clickFirstVisibleNodeByText("Paste")
-                    || clickFirstVisibleNodeByText("הדבק");
-            if (directMenuOk) {
-                showToast("Paste requested");
-                StrictLogger.logLine("INFO", "Paste result: true by visible context menu click");
-                hideMenu();
-                return;
-            }
-
-            ok = tryManualClipboardSetTextFallback(node);
-            if (ok) {
-                showToast("Pasted by text fallback");
-                StrictLogger.logLine("INFO", "Paste result: true by manual clipboard ACTION_SET_TEXT fallback; clipboard content not logged");
-                hideMenu();
-                return;
-            }
-
-            boolean longClickOk = tryOpenSelectionHandles(node);
-            if (longClickOk) {
-                showToast("Paste menu requested");
-                StrictLogger.logLine("WARNING", "Paste direct action and text fallback blocked; opened context menu fallback");
-                clickPasteMenuItemDelayed();
-                return;
-            }
-
-            showToast("Paste blocked or clipboard empty");
-            StrictLogger.logLine("WARNING", "Paste result: false after broad fallbacks");
         } finally {
             node.recycle();
         }
@@ -378,6 +294,9 @@ public class ManualTextAccessibilityService extends AccessibilityService {
 
     private boolean trySetSelectionRange(AccessibilityNodeInfo node, int start, int end) {
         if (node == null) {
+            return false;
+        }
+        if (!supportsActionId(node, AccessibilityNodeInfo.ACTION_SET_SELECTION)) {
             return false;
         }
 
@@ -391,11 +310,17 @@ public class ManualTextAccessibilityService extends AccessibilityService {
         if (node == null) {
             return false;
         }
+        if (!supportsActionId(node, AccessibilityNodeInfo.ACTION_LONG_CLICK)) {
+            return false;
+        }
         return node.performAction(AccessibilityNodeInfo.ACTION_LONG_CLICK);
     }
 
     private boolean tryExtendSelectionByWord(AccessibilityNodeInfo node) {
         if (node == null) {
+            return false;
+        }
+        if (!supportsActionId(node, AccessibilityNodeInfo.ACTION_NEXT_AT_MOVEMENT_GRANULARITY)) {
             return false;
         }
 
@@ -408,64 +333,6 @@ public class ManualTextAccessibilityService extends AccessibilityService {
         return node.performAction(AccessibilityNodeInfo.ACTION_NEXT_AT_MOVEMENT_GRANULARITY, args);
     }
 
-    private boolean tryManualClipboardSetTextFallback(AccessibilityNodeInfo node) {
-        if (node == null) {
-            return false;
-        }
-
-        CharSequence clipboardText = readClipboardTextOnlyAfterManualPasteTap();
-        if (clipboardText == null || clipboardText.length() == 0) {
-            StrictLogger.logLine("WARNING", "Manual paste fallback stopped because clipboard text is empty or unavailable");
-            return false;
-        }
-
-        CharSequence replacementText = buildSetTextFallbackContent(node, clipboardText);
-        Bundle args = new Bundle();
-        args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, replacementText);
-        return node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args);
-    }
-
-    private CharSequence readClipboardTextOnlyAfterManualPasteTap() {
-        // This method is called only from pasteIntoFocusedText(), after the user manually taps Paste.
-        // It is not background clipboard monitoring and it never logs clipboard content.
-        ClipboardManager clipboardManager = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-        if (clipboardManager == null) {
-            StrictLogger.logLine("WARNING", "ClipboardManager unavailable during manual paste fallback");
-            return null;
-        }
-        if (!clipboardManager.hasPrimaryClip()) {
-            StrictLogger.logLine("WARNING", "No primary clipboard clip during manual paste fallback");
-            return null;
-        }
-
-        ClipData clipData = clipboardManager.getPrimaryClip();
-        if (clipData == null || clipData.getItemCount() < 1 || clipData.getItemAt(0) == null) {
-            StrictLogger.logLine("WARNING", "Primary clipboard clip is empty during manual paste fallback");
-            return null;
-        }
-
-        return clipData.getItemAt(0).coerceToText(this);
-    }
-
-    private CharSequence buildSetTextFallbackContent(AccessibilityNodeInfo node, CharSequence clipboardText) {
-        CharSequence currentText = node.getText();
-        if (currentText == null || currentText.length() == 0) {
-            return clipboardText;
-        }
-
-        String before = currentText.toString();
-        String insert = clipboardText.toString();
-        int start = node.getTextSelectionStart();
-        int end = node.getTextSelectionEnd();
-        if (start >= 0 && end >= 0 && start <= before.length() && end <= before.length()) {
-            int safeStart = Math.min(start, end);
-            int safeEnd = Math.max(start, end);
-            return before.substring(0, safeStart) + insert + before.substring(safeEnd);
-        }
-
-        return before + insert;
-    }
-
     private int getNodeTextLength(AccessibilityNodeInfo node) {
         if (node == null || node.getText() == null) {
             return 0;
@@ -474,39 +341,20 @@ public class ManualTextAccessibilityService extends AccessibilityService {
     }
 
     private void clickSelectAllMenuItemDelayed() {
-        clickMenuItemDelayed("Select all", "Select all text", "בחר הכל");
-    }
-
-    private void clickCopyMenuItemDelayed() {
-        clickMenuItemDelayed("Copy", "Copy text", "העתק");
-    }
-
-    private void clickPasteMenuItemDelayed() {
-        clickMenuItemDelayed("Paste", "הדבק");
-    }
-
-    private void clickMenuItemDelayed(String... labels) {
         Handler handler = new Handler(Looper.getMainLooper());
         handler.postDelayed(() -> {
             try {
-                boolean ok = false;
-                for (String label : labels) {
-                    ok = clickFirstVisibleNodeByText(label);
-                    if (ok) {
-                        break;
-                    }
-                }
-                StrictLogger.logLine(ok ? "INFO" : "WARNING", "Delayed menu click result: " + ok);
+                boolean ok = clickFirstVisibleNodeByText("Select all")
+                        || clickFirstVisibleNodeByText("Select all text")
+                        || clickFirstVisibleNodeByText("בחר הכל");
+                StrictLogger.logLine(ok ? "INFO" : "WARNING", "Delayed Select all menu click result: " + ok);
                 if (ok) {
-                    showToast("Menu action requested");
-                    if (labels.length > 0 && "Paste".equals(labels[0])) {
-                        hideMenu();
-                    }
+                    showToast("Select all requested");
                 }
             } catch (Exception ex) {
-                StrictLogger.logLine("ERROR", "Delayed menu click failed", ex);
+                StrictLogger.logLine("ERROR", "Delayed Select all menu click failed", ex);
             }
-        }, CONTEXT_MENU_CLICK_DELAY_MS);
+        }, 350L);
     }
 
     private boolean clickFirstVisibleNodeByText(String text) {
@@ -527,10 +375,6 @@ public class ManualTextAccessibilityService extends AccessibilityService {
                     continue;
                 }
                 try {
-                    if (isOwnOverlayNode(match)) {
-                        continue;
-                    }
-
                     AccessibilityNodeInfo clickableNode = findClickableAncestorOrSelf(match);
                     if (clickableNode == null) {
                         continue;
@@ -555,7 +399,7 @@ public class ManualTextAccessibilityService extends AccessibilityService {
     private AccessibilityNodeInfo findClickableAncestorOrSelf(AccessibilityNodeInfo node) {
         AccessibilityNodeInfo current = AccessibilityNodeInfo.obtain(node);
         while (current != null) {
-            if (!isOwnOverlayNode(current) && (supportsActionId(current, AccessibilityNodeInfo.ACTION_CLICK) || current.isClickable())) {
+            if (supportsActionId(current, AccessibilityNodeInfo.ACTION_CLICK) || current.isClickable()) {
                 return current;
             }
 
@@ -566,7 +410,19 @@ public class ManualTextAccessibilityService extends AccessibilityService {
         return null;
     }
 
-    private AccessibilityNodeInfo findBestNodeForManualAction(TargetMode mode) {
+    private AccessibilityNodeInfo findFocusedSelectableNode() {
+        return findFocusedNodeMatchingMode(SearchMode.SELECTABLE_TEXT);
+    }
+
+    private AccessibilityNodeInfo findFocusedCopyNode() {
+        AccessibilityNodeInfo node = findFocusedNodeMatchingMode(SearchMode.COPY_TARGET);
+        if (node != null) {
+            return node;
+        }
+        return findFocusedEditableNode();
+    }
+
+    private AccessibilityNodeInfo findFocusedNodeMatchingMode(SearchMode mode) {
         AccessibilityNodeInfo root = getRootInActiveWindow();
         if (root == null) {
             StrictLogger.logLine("WARNING", "No active window root available");
@@ -577,30 +433,16 @@ public class ManualTextAccessibilityService extends AccessibilityService {
         AccessibilityNodeInfo accessibilityFocus = null;
         try {
             inputFocus = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
-            if (isCandidateAllowed(inputFocus)) {
-                StrictLogger.logLine("INFO", "Using input-focus node for manual action mode: " + mode);
+            if (isUsableNodeForMode(inputFocus, mode)) {
                 return AccessibilityNodeInfo.obtain(inputFocus);
             }
 
             accessibilityFocus = root.findFocus(AccessibilityNodeInfo.FOCUS_ACCESSIBILITY);
-            if (isCandidateAllowed(accessibilityFocus)) {
-                StrictLogger.logLine("INFO", "Using accessibility-focus node for manual action mode: " + mode);
+            if (isUsableNodeForMode(accessibilityFocus, mode)) {
                 return AccessibilityNodeInfo.obtain(accessibilityFocus);
             }
 
-            AccessibilityNodeInfo actionNode = findNodeByActionDepthFirst(root, mode);
-            if (actionNode != null) {
-                StrictLogger.logLine("INFO", "Using broad action-capable node for manual action mode: " + mode);
-                return actionNode;
-            }
-
-            AccessibilityNodeInfo textNode = findAnyTextNodeDepthFirst(root);
-            if (textNode != null) {
-                StrictLogger.logLine("WARNING", "Using broad text node fallback for manual action mode: " + mode);
-                return textNode;
-            }
-
-            return null;
+            return findFocusedNodeByModeDepthFirst(root, mode);
         } finally {
             if (inputFocus != null) {
                 inputFocus.recycle();
@@ -612,11 +454,11 @@ public class ManualTextAccessibilityService extends AccessibilityService {
         }
     }
 
-    private AccessibilityNodeInfo findNodeByActionDepthFirst(AccessibilityNodeInfo node, TargetMode mode) {
+    private AccessibilityNodeInfo findFocusedNodeByModeDepthFirst(AccessibilityNodeInfo node, SearchMode mode) {
         if (node == null) {
             return null;
         }
-        if (isCandidateAllowed(node) && isActionCandidateForMode(node, mode)) {
+        if (isUsableNodeForMode(node, mode)) {
             return AccessibilityNodeInfo.obtain(node);
         }
 
@@ -627,7 +469,7 @@ public class ManualTextAccessibilityService extends AccessibilityService {
                 continue;
             }
             try {
-                AccessibilityNodeInfo result = findNodeByActionDepthFirst(child, mode);
+                AccessibilityNodeInfo result = findFocusedNodeByModeDepthFirst(child, mode);
                 if (result != null) {
                     return result;
                 }
@@ -638,76 +480,26 @@ public class ManualTextAccessibilityService extends AccessibilityService {
         return null;
     }
 
-    private AccessibilityNodeInfo findAnyTextNodeDepthFirst(AccessibilityNodeInfo node) {
-        if (node == null) {
-            return null;
-        }
-        if (isCandidateAllowed(node) && hasVisibleText(node)) {
-            return AccessibilityNodeInfo.obtain(node);
-        }
-
-        int childCount = node.getChildCount();
-        for (int index = 0; index < childCount; index++) {
-            AccessibilityNodeInfo child = node.getChild(index);
-            if (child == null) {
-                continue;
-            }
-            try {
-                AccessibilityNodeInfo result = findAnyTextNodeDepthFirst(child);
-                if (result != null) {
-                    return result;
-                }
-            } finally {
-                child.recycle();
-            }
-        }
-        return null;
-    }
-
-    private boolean isActionCandidateForMode(AccessibilityNodeInfo node, TargetMode mode) {
+    private boolean isUsableNodeForMode(AccessibilityNodeInfo node, SearchMode mode) {
         if (node == null || mode == null) {
+            return false;
+        }
+        if (!node.isFocused() && !node.isAccessibilityFocused()) {
             return false;
         }
 
         switch (mode) {
-            case SELECT_ALL:
-                return supportsActionId(node, AccessibilityNodeInfo.ACTION_SET_SELECTION)
-                        || supportsActionId(node, AccessibilityNodeInfo.ACTION_SELECT)
+            case SELECTABLE_TEXT:
+                return hasVisibleText(node)
+                        && (supportsActionId(node, AccessibilityNodeInfo.ACTION_SET_SELECTION)
                         || supportsActionId(node, AccessibilityNodeInfo.ACTION_LONG_CLICK)
-                        || supportsActionId(node, AccessibilityNodeInfo.ACTION_NEXT_AT_MOVEMENT_GRANULARITY)
-                        || hasVisibleText(node);
-            case START_SELECTION:
-                return supportsActionId(node, AccessibilityNodeInfo.ACTION_LONG_CLICK)
-                        || supportsActionId(node, AccessibilityNodeInfo.ACTION_SELECT)
-                        || supportsActionId(node, AccessibilityNodeInfo.ACTION_NEXT_AT_MOVEMENT_GRANULARITY)
-                        || supportsActionId(node, AccessibilityNodeInfo.ACTION_SET_SELECTION)
-                        || hasVisibleText(node);
-            case COPY:
-                return supportsActionId(node, AccessibilityNodeInfo.ACTION_COPY)
-                        || supportsActionId(node, AccessibilityNodeInfo.ACTION_LONG_CLICK)
-                        || hasVisibleText(node);
-            case PASTE:
-                return supportsActionId(node, AccessibilityNodeInfo.ACTION_PASTE)
-                        || supportsActionId(node, AccessibilityNodeInfo.ACTION_SET_TEXT)
-                        || supportsActionId(node, AccessibilityNodeInfo.ACTION_LONG_CLICK)
-                        || node.isEditable();
+                        || supportsActionId(node, AccessibilityNodeInfo.ACTION_COPY)
+                        || supportsActionId(node, AccessibilityNodeInfo.ACTION_NEXT_AT_MOVEMENT_GRANULARITY));
+            case COPY_TARGET:
+                return supportsActionId(node, AccessibilityNodeInfo.ACTION_COPY);
             default:
                 return false;
         }
-    }
-
-    private boolean isCandidateAllowed(AccessibilityNodeInfo node) {
-        if (node == null) {
-            return false;
-        }
-        return !isOwnOverlayNode(node);
-    }
-
-    private boolean isOwnOverlayNode(AccessibilityNodeInfo node) {
-        if (node == null || node.getPackageName() == null) {
-            return false;
-        }
-        return getPackageName().contentEquals(node.getPackageName());
     }
 
     private boolean hasVisibleText(AccessibilityNodeInfo node) {
@@ -731,11 +523,99 @@ public class ManualTextAccessibilityService extends AccessibilityService {
         return false;
     }
 
-    private enum TargetMode {
-        SELECT_ALL,
-        START_SELECTION,
-        COPY,
-        PASTE
+    private enum SearchMode {
+        SELECTABLE_TEXT,
+        COPY_TARGET
+    }
+
+    private AccessibilityNodeInfo findFocusedEditableNode() {
+        AccessibilityNodeInfo root = getRootInActiveWindow();
+        if (root == null) {
+            StrictLogger.logLine("WARNING", "No active window root available");
+            return null;
+        }
+
+        AccessibilityNodeInfo inputFocus = null;
+        AccessibilityNodeInfo accessibilityFocus = null;
+        try {
+            inputFocus = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
+            if (isUsableEditableNode(inputFocus)) {
+                return AccessibilityNodeInfo.obtain(inputFocus);
+            }
+
+            accessibilityFocus = root.findFocus(AccessibilityNodeInfo.FOCUS_ACCESSIBILITY);
+            if (isUsableEditableNode(accessibilityFocus)) {
+                return AccessibilityNodeInfo.obtain(accessibilityFocus);
+            }
+
+            return findEditableFocusedNodeDepthFirst(root);
+        } finally {
+            if (inputFocus != null) {
+                inputFocus.recycle();
+            }
+            if (accessibilityFocus != null) {
+                accessibilityFocus.recycle();
+            }
+            root.recycle();
+        }
+    }
+
+    private AccessibilityNodeInfo findEditableFocusedNodeDepthFirst(AccessibilityNodeInfo node) {
+        if (node == null) {
+            return null;
+        }
+        if (isUsableEditableNode(node)) {
+            return AccessibilityNodeInfo.obtain(node);
+        }
+
+        int childCount = node.getChildCount();
+        for (int index = 0; index < childCount; index++) {
+            AccessibilityNodeInfo child = node.getChild(index);
+            if (child == null) {
+                continue;
+            }
+            try {
+                AccessibilityNodeInfo result = findEditableFocusedNodeDepthFirst(child);
+                if (result != null) {
+                    return result;
+                }
+            } finally {
+                child.recycle();
+            }
+        }
+        return null;
+    }
+
+    private boolean isUsableEditableNode(AccessibilityNodeInfo node) {
+        if (node == null) {
+            return false;
+        }
+
+        if (!node.isEditable()) {
+            return false;
+        }
+
+        if (!node.isFocused() && !node.isAccessibilityFocused()) {
+            return false;
+        }
+
+        List<AccessibilityNodeInfo.AccessibilityAction> actions = node.getActionList();
+        return containsAction(actions, AccessibilityNodeInfo.AccessibilityAction.ACTION_SET_SELECTION)
+                || containsAction(actions, AccessibilityNodeInfo.AccessibilityAction.ACTION_COPY)
+                || containsAction(actions, AccessibilityNodeInfo.AccessibilityAction.ACTION_PASTE);
+    }
+
+    private boolean containsAction(List<AccessibilityNodeInfo.AccessibilityAction> actions,
+                                   AccessibilityNodeInfo.AccessibilityAction expected) {
+        if (actions == null || expected == null) {
+            return false;
+        }
+        for (AccessibilityNodeInfo.AccessibilityAction action : actions) {
+            if (expected.equals(action)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void hideMenu() {
