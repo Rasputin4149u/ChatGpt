@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Manual Copy Paste Helper</string>
+    <string name="accessibility_service_label">Manual Copy Paste Helper</string>
+    <string name="accessibility_service_description">Shows a manual menu for select all, copy, and paste. It does not monitor, upload, or automatically change text.</string>
+</resources>
