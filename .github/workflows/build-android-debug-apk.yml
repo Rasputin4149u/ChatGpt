@@ -1,354 +1,118 @@
-;Z:\InsPro\xhamsterlive\RecRedDotScript.ahk
-#Requires AutoHotkey v2.0
-#SingleInstance Force
+name: Build Android Debug APK
 
-global isRec := false
-global isPaused := false
-global blinkState := false
-global g_RecPopupGui := Gui(, "Recording Popup")
-global g_targetHwnd := 0
-g_LastActiveWindowHwnd := 0
+'on':
+  workflow_dispatch:
+  push:
+    paths:
+      - 'app/**'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - '.github/workflows/build-android-debug-apk.yml'
 
-; 1. Create and render the GUI exactly once at script startup
-global recGui := Gui("+AlwaysOnTop -Caption +ToolWindow +LastFound +0x8")
-recGui.Opt("-E0x20")  ; Clickable 
-recGui.BackColor := "010101"
-recGui.SetFont("s30 Bold", "Segoe UI Symbol")
+permissions:
+  contents: read
 
-; Keep the window slightly larger than text to prevent cutting off bounding boxes
-global statusDot := recGui.Add("Text", "x0 y0 w160 h80 Center cRed BackgroundTrans", "")
+jobs:
+  build-debug-apk:
+    name: Build debug APK without local developer environment
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
 
-; 2. Context-sensitive Hotkeys (Only active when hovering over this specific GUI)
-#HotIf MouseIsOver("ahk_id " recGui.Hwnd)
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-; DRAG BEHAVIOR: Triggered when holding the Left Mouse Button down
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
 
-~LButton:: {
-    if KeyWait("LButton", "T0.2") {
-        StopRecording()
-		ExitApp()
-    }
-	if !KeyWait("LButton", "T0.2") {
-        PostMessage(0xA1, 2,,, "ahk_id " recGui.Hwnd)
-    }
-	
-}
-; RIGHT CLICK CLOSE: Triggered when pressing the Right Mouse Button
-RButton:: {
-    PauseResumeRecording()
-	
-}
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3.2.2
 
+      - name: Install required Android SDK packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager --install \
+            'platform-tools' \
+            'platforms;android-36' \
+            'build-tools;36.0.0'
 
-#HotIf
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14.3'
 
-; 3. DOUBLE CLICK POPUP: Monitored via Windows message
-OnMessage(0x0203, GuiDoubleLeftClick)  
-GuiDoubleLeftClick(wParam, lParam, msg, hwnd) {
-    global recGui
-    if (hwnd == recGui.Hwnd) {
-       StopRecording()
-    }
-}
+      - name: Locate Android project
+        id: locate_project
+        shell: bash
+        run: |
+          set -euo pipefail
 
-; Helper function to check mouse position
-MouseIsOver(WinTitle) {
-    MouseGetPos ,, &Win
-		
-    return WinExist(WinTitle " ahk_id " Win)
-}
+          if [ -f "$GITHUB_WORKSPACE/settings.gradle" ]; then
+            PROJECT_DIR="$GITHUB_WORKSPACE"
+          else
+            mapfile -t PROJECTS < <(find "$GITHUB_WORKSPACE" -maxdepth 4 -name settings.gradle -not -path '*/.github/*' -print | sort)
 
-MousePos(){
-	SetTimer WatchCursor, 500
+            if [ "${#PROJECTS[@]}" -eq 0 ]; then
+              echo "ERROR: No settings.gradle found outside .github. Upload build.gradle, settings.gradle, and app/ to the repository root." >&2
+              exit 1
+            fi
 
-	WatchCursor()
-	{
-		MouseGetPos , , &id, &control
-		Title := WinGetTitle(id)
-		
-		if ( Title = "RecRedDotScript.ahk"){
-			ToolTip("Double Click - Exit : Right Click - PauseResume Rec : Left Click - Stop Rec")
-			Sleep(5000)
-			ToolTip()
-		}
-	}
-}
+            if [ "${#PROJECTS[@]}" -gt 1 ]; then
+              echo "ERROR: More than one settings.gradle found outside .github. Keep only one Android project root." >&2
+              printf '%s\n' "${PROJECTS[@]}" >&2
+              exit 1
+            fi
 
-ShowDot(*){
-	global g_RecPopupGui
-	
-	fShowDot()
-	g_RecPopupGui.Destroy()
-}
+            PROJECT_DIR="$(dirname "${PROJECTS[0]}")"
+          fi
 
-fShowDot(){
-	global recGui, g_RecPopupGui
-	
-	recGui.Show("w100 h40 x0 y0 NoActivate")
-	WinSetTransColor("010101", recGui)
+          echo "PROJECT_DIR=${PROJECT_DIR}" | tee -a "$GITHUB_ENV"
+          echo "project_dir=${PROJECT_DIR}" >> "$GITHUB_OUTPUT"
+          echo "Located Android project at: ${PROJECT_DIR}"
 
-	; FORCE ABOVE PICTURE-IN-PICTURE (PiP) WINDOWS
-	; This uses Windows API SetWindowPos to inject it over modern browser PiP boxes.
-	DllCall("SetWindowPos", "Ptr", recGui.Hwnd, "Ptr", -1, "Int", 0, "Int", 0, "Int", 160, "Int", 80, "UInt", 0x0040)
-	; Start by blinking Yellow at launch since we are not recording yet
-	SetNotRecording()
-	
-	
-}
+      - name: Validate required project files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f "$PROJECT_DIR/settings.gradle" || { echo "ERROR: Missing settings.gradle" >&2; exit 1; }
+          test -f "$PROJECT_DIR/build.gradle" || { echo "ERROR: Missing root build.gradle" >&2; exit 1; }
+          test -f "$PROJECT_DIR/app/build.gradle" || { echo "ERROR: Missing app/build.gradle" >&2; exit 1; }
+          test -f "$PROJECT_DIR/app/src/main/AndroidManifest.xml" || { echo "ERROR: Missing app/src/main/AndroidManifest.xml" >&2; exit 1; }
 
-HideDot(*){
-	global  g_RecPopupGui
-	
-	fHideDot()
-	g_RecPopupGui.Destroy()
-	
-}
+      - name: Build debug APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$PROJECT_DIR"
+          gradle --version
+          gradle --no-daemon --stacktrace :app:assembleDebug 2>&1 | tee "$GITHUB_WORKSPACE/android-build-log.txt"
 
-fHideDot(){
-	global recGui
-	
-	recGui.Hide()
-	
-	
-}
-RunManyCam(*){
-	global g_RecPopupGui
-	
-	myArg := ""
-	RunWait('"Z:\InsPro\Tools\Batch\RunMany.bat" ' . myArg)
-	g_RecPopupGui.Destroy()
-}
-Exit(*){
-	global g_RecPopupGui
-	
-	g_RecPopupGui.Destroy()
+      - name: Locate generated APK
+        id: locate_apk
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t APKS < <(find "$PROJECT_DIR/app/build/outputs/apk/debug" -type f -name '*.apk' -print | sort)
 
-}
-	
-AutorunsSnap(*) {
-    global g_RecPopupGui
+          if [ "${#APKS[@]}" -eq 0 ]; then
+            echo "ERROR: Build finished but no debug APK was found." >&2
+            exit 1
+          fi
 
-    LagGui := Gui("+AlwaysOnTop", "LagSnap Level")
-    LagGui.AddText(, "Choose LagSnap capture level:")
+          printf 'Generated APK files:\n'
+          printf '%s\n' "${APKS[@]}"
 
-    LagGui.AddButton("w180", "Normal").OnEvent("Click", (*) => RunLagSnap(""))
-    LagGui.AddButton("w180", "With Autoruns").OnEvent("Click", (*) => RunLagSnap("autoruns"))
-    LagGui.AddButton("w180", "With ImageLoad").OnEvent("Click", (*) => RunLagSnap("imageload"))
-	LagGui.AddButton("w180", "With Both").OnEvent("Click", (*) => RunLagSnap("imageload" "autoruns"))
-	
-	LagGui.Show()
-}
-
-RunLagSnap(Args) {
-    global g_RecPopupGui
-
-    BatPath := "Z:\InsPro\Tools\Batch\LagSnap.bat"
-    Cmd := '"' BatPath '" ' Args
-
-    MsgBox("Debug before RunWait:`n" Cmd, "Debug")
-
-    RunWait(Cmd)
-
-    MsgBox("LagSnap finished.", "Done")
-
-    if IsSet(g_RecPopupGui) && IsObject(g_RecPopupGui) {
-        g_RecPopupGui.Destroy()
-    }
-}
-
-ShowPopup(){
-	global g_RecPopupGui
-	
-		
-	btnRun := g_RecPopupGui.Add("Button", "w100", "Run ManyCam")
-	btnRun.OnEvent("Click", RunManyCam)
-	
-	btnShowDot := g_RecPopupGui.Add("Button", "w100", "Show Dot")
-	btnShowDot.OnEvent("Click", ShowDot)
-	
-	btnHideDot := g_RecPopupGui.Add("Button", "w100", "Hide Dot")
-	btnHideDot.OnEvent("Click", HideDot)
-	
-	btnHideDot := g_RecPopupGui.Add("Button", "w100", "Take Autoruns snap")
-	btnHideDot.OnEvent("Click", AutorunsSnap)
-	
-	btnExit := g_RecPopupGui.Add("Button", "w100", "Exit")
-	btnExit.OnEvent("Click", Exit)
-
-	g_RecPopupGui.Show()
-}
-
-HandleFirefoxSignal() {
-    SoundBeep(1000, 150) 
-    ToolTip("Firefox Sent Signal: " . A_TickCount)
-    Sleep(5000)
-	ToolTip()
-    SoundBeep(1200, 150)
-	ShowPopup()
-}
-
-
-MousePos()
-AskShowDot()
-
-AskShowDot(){
-
-	Result := MsgBox("Do you want to show dot?", "Question", "YesNo Icon?")
-	if (Result = "Yes") {
-		fShowDot
-	} else {
-		fHideDot
-	}
-}
-
-OnMessage(0x004A, ReceiveFirefoxMessage)
-
-ReceiveFirefoxMessage(wParam, lParam, msg, hwnd) {
-    global g_targetHwnd, g_LastActiveWindowHwnd
-
-    try {
-        StringAddress := NumGet(lParam, 2 * A_PtrSize, "Ptr")
-        IncomingText := StrGet(StringAddress)
-
-        if (IncomingText = "RUN-RecRedDotScriptControl") {
-            HandleFirefoxSignal()
-            return 1
-        }
-
-        if (IncomingText = "GET_ACTIVE_HWND") {
-		
-            g_targetHwnd := WinGetID("A")
-            g_LastActiveWindowHwnd := g_targetHwnd
-            ToolTip("Target HWND saved")
-            Sleep(5000)
-			ToolTip()
-            return 1
-        }
-    } catch as e {
-        ToolTip("ReceiveFirefoxMessage error: " e.Message)
-        SetTimer(() => ToolTip(), -2500)
-    }
-
-    return 1
-}
-
-StopRecording(){
-	global isRec, isPaused
-	
-	isRec := false
-        isPaused := false
-        SetNotRecording()
-        Send "^s"
-        Sleep 50
-}
-StartRecording(){
-	global isRec, isPaused
-	
-	Send "^s"
-	Sleep 50
-	isRec := true
-	isPaused := false
-	SetRecording()
-
-}
-
-F3:: {
-	ShowPopup()
-}
-F10:: {
-	fShowDot()
-}
-
-F11:: {
-	fHideDot()
-}
-
-!y:: {
-	Help()
-}
-
-Help(){
-	MsgBox("Usage- Alt+h: ThisMessage,F10: Show Dot ,F11:Hide Dot, Alt+Esc: Exit App, F9: Start/Resume Recording, F9: Stop/Srart Recording, F3: Show Popup")
-}
-
-; F8 - Start / Stop Recording
-F8:: {
-    
-    if isRec {
-        StopRecording()
-    } else {
-        StartRecording()
-    }
-}
-
-; F9 - Pause / Resume Recording
-F9:: {
-    PauseResumeRecording() 
-}
-
-PauseResumeRecording() {
-    global isRec, isPaused
-    if isRec {
-        if isPaused {
-            Send "^p"
-            Sleep 50
-            isPaused := false
-            SetRecording()
-        } else {
-            Send "^p"
-            Sleep 50
-            isPaused := true
-            SetNotRecording()
-        }
-    } else {
-        Send "^s"
-        Sleep 50
-        isRec := true
-        isPaused := false
-        SetRecording()
-    }
-}
-
-Esc::ExitApp
-
-SetRecording() {
-    global blinkState := true
-	
-    statusDot.Opt("cRed")       ; Set to Red
-    statusDot.Value := "🔴REC"  ; Show text
-    statusDot.Redraw()
-    SetTimer(BlinkDot, 500)     ; Ensure timer is running
-} 
-
-SetNotRecording() {
-    global blinkState
-	
-    blinkState := true
-    statusDot.Opt("cYellow")    ; Set to Yellow
-    statusDot.Value := "🔴REC"  ; Show text
-    statusDot.Redraw()
-    SetTimer(BlinkDot, 500)     ; Ensure timer is running
-}  
-
-BlinkDot() {
-    global blinkState, isRec, isPaused
-    
-    if (blinkState) {
-        statusDot.Value := ""   ; Hide text for blank phase
-        statusDot.Redraw()
-        blinkState := false
-    } else {
-        ; Check the current status to decide the color phase when it reappears
-        if (isRec && !isPaused) {
-            statusDot.Opt("cRed")
-        } else {
-            statusDot.Opt("cYellow")
-        }
-        statusDot.Value := "🔴REC"
-        statusDot.Redraw()
-        blinkState := true
-        
-        ; Re-enforce PiP layer priority during blink redraw loops
-        DllCall("SetWindowPos", "Ptr", recGui.Hwnd, "Ptr", -1, "Int", 0, "Int", 0, "Int", 160, "Int", 80, "UInt", 0x0010 | 0x0002)
-    }
-}
+      - name: Upload APK and build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AndroidAccessibilityCopyPasteHelper-debug-apk
+          if-no-files-found: warn
+          path: |
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
+            android-build-log.txt
+            ${{ env.PROJECT_DIR }}/app/build/reports/**
