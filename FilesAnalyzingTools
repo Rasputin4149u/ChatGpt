@@ -15,7 +15,16 @@ X10THINK
 # =============================================================================
 # QUICK READ HEADER FOR CHATGPT / HUMAN REVIEWER
 # =============================================================================
-# Tool role:
+# Wrokflow
+#   if the task is to investigate for the truth
+#   If video involved you look for srt file and read, Table important
+#   issues with timestamps.You look at the video for evidence to those issues.
+#   Search in any uploaded (Documents etc) file for those issues and cross data.
+#   DO NOT SKIP ANY ISSUE
+#   You might need to read the documents first , find issues and table them and look at the srt croos the 
+#   video
+#   Read Documents -> Table issues and claims -> look foe evidences in srt+video (or any other source)
+#   Tool role:
 #   Universal offline intake helper for uploaded files. Use it before analysis to
 #   turn one uploaded file into a predictable evidence package: original copy,
 #   metadata, extracted text, previews, contact sheets, timelines, manifest,
