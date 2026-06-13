@@ -1,0 +1,22 @@
+{
+  "result": "PASS",
+  "passes": [
+    "PASS XML parse: app/src/main/AndroidManifest.xml",
+    "PASS XML parse: app/src/main/res/xml/accessibility_service_config.xml",
+    "PASS XML parse: app/src/main/res/values/strings.xml",
+    "PASS XML parse: app/src/main/res/values/styles.xml",
+    "PASS manifest/config posture: accessibility service registered; no INTERNET permission; shortcut flag present",
+    "PASS Java syntax compile with Android API stubs: javac -Xlint:all returned 0",
+    "PASS logic review: onAccessibilityEvent is no-op and does not call performAction",
+    "PASS logic review: manual shortcut callback toggles menu",
+    "PASS logic review: select all keeps menu open",
+    "PASS logic review: copy keeps menu open",
+    "PASS logic review: paste closes menu only on success",
+    "PASS logic review: no clipboard manager / clipboard read",
+    "PASS logic review: main activity only opens settings",
+    "PASS logic review: onAccessibilityEvent does not inspect text or perform actions",
+    "PASS error logging: StrictLogger auto-adds timestamp, level, caller method, caller line, and message",
+    "PASS error logging: ERROR and WARNING paths use StrictLogger without manual caller line injection"
+  ],
+  "errors": []
+}

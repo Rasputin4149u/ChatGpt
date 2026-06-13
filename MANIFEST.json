@@ -1,0 +1,23 @@
+{
+  "generated_at": "2026-06-12 22:21:32 Asia/Jerusalem",
+  "project": "AndroidAccessibilityCopyPasteHelper_LinkV1",
+  "file_count": 15,
+  "sha256_by_file": {
+    "settings.gradle": "a398912c6ae2fbee49aefdc6b4b7ca24704e9b081c5a5c01bfce5c081eb4d17a",
+    "build.gradle": "fb639e5e628deb129f5c804ad8cc664b3b56fce1b0ce6880ac02f54515ba59da",
+    "app/build.gradle": "6343dbae270929511f51094b6537c0fd30374e317a473b2b033ceb21953bb152",
+    "app/src/main/AndroidManifest.xml": "6843eec0d7706a4a211e4221d4ff6eb55f26639f094ff8f0811ff8ae71245718",
+    "app/src/main/res/xml/accessibility_service_config.xml": "9a24e0db455ffac4d0a262e5bc66fa1eb5e9720c0cc3d280aae5353aa6160434",
+    "app/src/main/res/values/strings.xml": "8d7d5396eb087a07ea9ace15c4ae7ded80d64b29cd5518132fecca34f42240ab",
+    "app/src/main/res/values/styles.xml": "9408a5f83426f2feb09d47b8d29a31ff26402e206a0df482c965a16cc21d3450",
+    "app/src/main/java/com/rasputin/accessibilitycopyhelper/StrictLogger.java": "327c002b15cb41ec8d0644e2f5bc84f11c17bbc5b21ecd78d4bf47b6fb1a0885",
+    "app/src/main/java/com/rasputin/accessibilitycopyhelper/MainActivity.java": "0be045ff88dd23a9ad00bfb32d1cd32be2761252fd4a6a1399b76ddae17b0222",
+    "app/src/main/java/com/rasputin/accessibilitycopyhelper/ManualTextAccessibilityService.java": "77702bc0fd04622cdb5e9b8e94e0de681240be784e7893e7704909e6b20e0fb5",
+    "README.md": "65947ac0a309395ea60835ad19fb0ed35c57735c46726eb6ce9ddaa3cbe773d2",
+    ".gitignore": "6d886a5dcf14f8778da7d49dc8e1a811b4031d6b09a5fc62f5d6a31af161e0bc",
+    "VALIDATION_REPORT.json": "afc05d8723623a799f8e80d978f06ca6d8b690d58cf4cbe280a03be84f2a4a54",
+    "VALIDATION_REPORT.txt": "0ccdd9d455e9ed1d74b769ee424ee27c25b8750146462a8335903e543ab055cc"
+  },
+  "validation_result": "PASS",
+  "updated_at": "2026-06-12 22:22:35 Asia/Jerusalem"
+}
