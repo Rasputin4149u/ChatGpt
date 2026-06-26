@@ -1,5 +1,7 @@
 # === RAW_CHECK_ID: 0001 ===
 
+Parent index:
+https://raw.githubusercontent.com/Rasputin4149u/ChatGpt/refs/heads/main/FilesResearch_Index_LinkV1.md
 # 2026-06-26 10:51:31 — Claim Investigation Workflow Protocol
 
 GeneratedAt: 2026-06-26 10:51:31 Asia/Jerusalem  
