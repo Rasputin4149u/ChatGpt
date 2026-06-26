@@ -1,7 +1,13 @@
+# === RAW_CHECK_ID: 0001 ===
 # 2026-06-26 10:25:30 — [FilesResearch_AlertInvestigation]
 
 ## 2026-06-26 10:25:30 — Load Prerequisite File-Analysis Protocol
+GeneratedAt: 2026-06-26 10:25:30 Asia/Jerusalem  
+Version: LinkV1  
+Purpose: Detailed instruction page for alert/log/security-event investigation, including Sysmon, registry, services, Scheduled Tasks, TaskCache, process/path alerts, ignore decisions, monitoring decisions, and evidence-backed risk classification.
 
+Parent index:
+https://raw.githubusercontent.com/Rasputin4149u/ChatGpt/refs/heads/main/FilesResearch_Index_LinkV1.md
 ```text
 [FilesAnalyzingTools]
 LOAD INSTRUCTIONS FROM:
