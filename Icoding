@@ -1,6 +1,6 @@
 GENERAL INSTRUCTIONS HEADER (FOR ALL MODES)
 Icoding Version: LinkV4_StrictIcodingLogger
-Short description: Strict Icoding logger requirement. Any logger helper named log_line(), Write-DebugLine(), or equivalent must auto-add caller function name and caller code line number to every log event.
+Short description: Strict Icoding logger requirement plus structured data comparison preference. Logger helpers named log_line(), Write-DebugLine(), or equivalent must auto-add caller function name and caller code line number to every log event. Future object/array comparison should prefer assignment-time fingerprint/hash when designed upfront.
 
 For GENERAL INSTRUCTIONS in this chat, before doing anything else, read and apply the file as mandatory instructions:
 https://raw.githubusercontent.com/Rasputin4149u/ChatGpt/refs/heads/main/GENERAL%20INSTRUCTIONS
@@ -202,8 +202,49 @@ def example(path: str) -> bool:
 - Logger helpers must be boring, explicit, and easy to verify.
 
 ---
+### 5. Structured Data Comparison — Prefer Assignment-Time Fingerprint
 
-### 5. Comments + Logs
+For any future need to compare structured data, if the compared value is an object, array, list, hashtable, dictionary, or any other multi-field / multi-item data structure, the first preferred design is to create a stable fingerprint/hash at the time the data is assigned, created, captured, or saved.
+
+This rule does not apply to simple scalar values such as a single string, number, boolean, enum, or timestamp.
+
+Preferred design:
+
+* When structured data is created or assigned, also create a stable comparison fingerprint/hash for that data.
+* Store the fingerprint/hash together with the original data.
+* Future comparison should prefer comparing fingerprint/hash values instead of repeatedly comparing the full object or array field-by-field.
+* Keep the original object/array for debugging, display, evidence, and mismatch investigation.
+* The fingerprint/hash must be based only on fields/items that are part of the intended comparison identity.
+* Do not include volatile fields unless they are intentionally part of the comparison identity.
+
+Volatile fields usually include:
+
+```text
+Timestamp
+LogTimestamp
+RawTimestamp
+PID
+temporary index
+runtime-only file name
+session-only values
+random IDs
+```
+
+Required priority for structured data comparison:
+
+```text
+1. Preferred: fingerprint/hash created at assignment/capture/save time.
+2. Acceptable: explicit field-by-field comparison when no fingerprint/hash was prepared.
+3. Not acceptable for persistent/reloaded data: raw object reference comparison.
+```
+
+Important retrofit rule:
+
+Do not retrofit a new fingerprint/hash layer into an active repair or refactor unless the user explicitly approves it.
+
+If the current implementation already uses explicit field-by-field comparison and there are open fixes in progress, finish the current repair path first. Mark fingerprint/hash comparison as a future cleanup instead of changing architecture mid-repair.
+
+### 6 Comments + Logs
 
 Every important step must have:
 
@@ -214,7 +255,7 @@ The log line must use the approved strict logger helper.
 
 ---
 
-### 6. Variable Logging
+### 7. Variable Logging
 
 - Log important values only.
 - Do not log secrets, tokens, passwords, private keys, full cookies, or unnecessary personal data.
