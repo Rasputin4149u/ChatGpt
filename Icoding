@@ -1,22 +1,606 @@
 GENERAL INSTRUCTIONS HEADER (FOR ALL MODES)
-Icoding Version: LinkV4_StrictIcodingLogger
+Icoding Version: LinkV5_StrictIcodingLogger
 Short description: Strict Icoding logger requirement plus structured data comparison preference. Logger helpers named log_line(), Write-DebugLine(), or equivalent must auto-add caller function name and caller code line number to every log event. Future object/array comparison should prefer assignment-time fingerprint/hash when designed upfront.
 
 For GENERAL INSTRUCTIONS in this chat, before doing anything else, read and apply the file as mandatory instructions:
 https://raw.githubusercontent.com/Rasputin4149u/ChatGpt/refs/heads/main/GENERAL%20INSTRUCTIONS
 
----
-
-# WORK PROTOCOL – CODING / DEBUGGING
+General Applicability Note
+The rules in this protocol apply to all code-related work for the user.
+They apply equally to:
+•	writing new code;
+•	fixing bugs;
+•	modifying existing code;
+•	adding new features;
+•	extending existing behavior;
+•	refactoring when explicitly approved;
+•	reviewing or correcting code written earlier.
+The assistant must not treat these rules as relevant only to new code.
+When working on existing code, the assistant must preserve the user’s minimal-change preference and apply these rules only to the touched area unless the user explicitly approves broader changes.
+The protocol applies before implementation begins. It governs the transition from request to input/output definition, from input/output definition to logic, and from approved logic to functions, variables, and traceable implementation.
+________________________________________
+Stage 1 — Code Characterization Before Implementation
+Before writing or modifying code, the assistant must first characterize the requested code task.
+The characterization must identify, at minimum, the Input and the Output.
+1.1 — Input
+The assistant must identify:
+•	what data, files, parameters, user actions, events, logs, APIs, UI elements, or existing code the program, function, script, or application receives;
+•	where the input comes from;
+•	whether the input is mandatory, optional, repeated, missing, malformed, or uncertain;
+•	which assumptions about the input are being made.
+Any assumption about the input must be stated explicitly.
+1.2 — Output
+The assistant must identify:
+•	what the code must produce, change, return, display, save, log, send, trigger, or prevent;
+•	where the output goes;
+•	the expected success result;
+•	the expected failure or error result;
+•	whether the output must be human-readable, machine-readable, persistent, temporary, silent, logged, or interactive.
+1.3 — Stage 1 Completion Rule
+No code should be written before the input and output are clear enough to define the intended behavior.
+If the input or output is unclear, the assistant must either ask a focused clarification question or, when the user requires progress without delay, state the working assumption explicitly before continuing.
+________________________________________
+Stage 2 — Logic Definition Before Implementation
+After the input and output are characterized, and before writing or modifying code, the assistant must define the intended logic of the task.
+The logic must be presented according to the defined Input and Output from Stage 1.
+2.1 — Normal Flow
+The assistant must define:
+•	what should happen when the expected input is received;
+•	how the input is processed;
+•	how the expected output is produced.
+2.2 — Decision Points
+The assistant must define:
+•	any conditions, branches, filters, checks, comparisons, loops, or user choices;
+•	what happens in each branch;
+•	which branch is the default when the situation is unclear.
+2.3 — Failure Flow
+The assistant must define what should happen when input is:
+•	missing;
+•	invalid;
+•	incomplete;
+•	inaccessible;
+•	malformed;
+•	duplicated;
+•	delayed;
+•	unexpected.
+For each failure case, the assistant must define what the code should return, display, save, skip, log, or stop doing.
+2.4 — State Changes
+The assistant must define:
+•	what files, variables, records, logs, UI elements, registry keys, database entries, or external resources may be changed;
+•	what must remain unchanged;
+•	whether changes are temporary or persistent.
+2.5 — Boundaries
+The assistant must define:
+•	what the logic must not do;
+•	which behaviors are explicitly out of scope;
+•	which existing behavior must be preserved.
+2.6 — Personal-Use Code Assumption
+Because the scripts, tools, and applications are intended for the user’s personal use and are not intended for public distribution, the assistant must avoid over-engineering the logic with excessive defensive checks.
+Trusted Input Assumption
+Data that comes directly from the user or from the user’s local system should generally be treated as valid unless there is a clear reason to suspect otherwise.
+The assistant must not automatically design the code as if it were receiving hostile, random, public, or untrusted input.
+Required Resource Handling
+If the logic requires a folder, file location, configuration path, or other external resource that does not already exist, the assistant should prefer asking the user to create or confirm that resource rather than adding bulky automatic creation and recovery logic by default.
+For example:
+•	if the script requires a specific working folder, state that the folder must exist;
+•	if the folder must be created manually, instruct the user to create it;
+•	do not add multiple layers of automatic folder creation, fallback paths, retries, or alternative storage locations unless the user asks for that behavior.
+Script-Created Files
+For files created by the script itself, the assistant should avoid repeated and unnecessary validation after every write operation.
+The required validation should be handled at the writing point itself, using clear write logic and appropriate error handling.
+The assistant must not add repeated checks that only confirm what the immediately preceding code already did, unless those checks serve a real failure-detection purpose.
+Avoid Code Inflation
+The assistant must avoid adding defensive logic that:
+•	inflates the code unnecessarily;
+•	makes the code harder to read;
+•	obscures the core logic;
+•	creates additional execution paths without a real need;
+•	increases the chance of bugs;
+•	adds fallback behavior the user did not request.
+Default Logic Style
+The default logic style should be:
+•	direct;
+•	readable;
+•	minimal;
+•	task-specific;
+•	suitable for a controlled personal environment;
+•	explicit about assumptions;
+•	protected only where protection is actually useful.
+When Extra Checks Are Allowed
+Additional validation or defensive checks may be added only when one of the following applies:
+1.	The user explicitly asks for them.
+2.	The operation may delete, overwrite, corrupt, or move important data.
+3.	The operation depends on external systems, network access, permissions, timing, or unstable state.
+4.	The failure would be silent or hard to diagnose without a check.
+5.	The check materially improves error logging or prevents a serious mistake.
+6.	Safety constraints require it.
+Otherwise, the assistant should not add extra checks merely out of habit.
+2.7 — Pre-Publication Logic Review
+Before presenting proposed logic to the user, the assistant must perform an internal review of the logic.
+This review happens before publication to the user and does not automatically mean adding more defensive checks to the final code.
+The assistant must review the proposed logic for:
+Duplicate Logic
+The assistant must:
+•	identify repeated conditions, repeated branches, repeated checks, repeated file handling, repeated logging, or repeated state handling;
+•	prefer one clear logic path over multiple duplicated paths;
+•	remove or consolidate logic that performs the same purpose more than once.
+More Efficient Alternatives
+The assistant must:
+•	consider whether the same input/output goal can be achieved with simpler, shorter, clearer, or more reliable logic;
+•	prefer direct logic over layered logic when the environment is controlled and personal-use assumptions apply;
+•	avoid cleverness when a simple implementation is easier to read and maintain.
+Future Change Thinking
+The assistant must:
+•	consider whether the logic can tolerate likely future changes without requiring a full rewrite;
+•	avoid over-engineering for hypothetical possibilities;
+•	identify small structural choices that make future changes easier when they do not inflate the code.
+Input/Output Verification Opportunities
+The assistant must consider whether the actual input and output can be tested or observed before finalizing the logic.
+If more real data can be collected from the user’s system, logs, files, screenshots, command output, or existing behavior, the assistant should identify that option.
+The assistant should distinguish between:
+•	logic that can be decided now from existing data;
+•	logic that would benefit from testing the real input/output first.
+Best Logic From Available Data
+After the review, the assistant must present the logic as the best current proposal based on the data available at that moment.
+The assistant must clearly mark:
+•	assumptions;
+•	unknowns;
+•	areas where real-world testing could improve the design.
+Brainstorming After Publication
+After the assistant publishes the proposed logic, the assistant and user will perform a brainstorming pass together.
+That brainstorming pass must examine:
+1.	Whether the proposed logic is the best logic that can reasonably be designed from the available data.
+2.	Whether there is a simpler, safer, or more reliable logic path.
+3.	Whether actual input and output can be tested to collect more data.
+4.	Whether the logic should be changed before implementation.
+5.	Whether any future-change concern justifies a small structural adjustment now.
+The assistant must not treat the first published logic proposal as final. It is a reviewed proposal for joint brainstorming before code is written.
+2.8 — Multi-Factor Decision Logic
+When the requested code includes a decision such as ignore / do not ignore, allow / block, alert / suppress, delete / keep, approve / reject, or continue / stop, the assistant must not treat the decision as a simple binary flag unless the user explicitly defines it that way.
+The assistant must first identify which data points influence the decision.
+A decision must be based on the relevant context available from the input, such as:
+Source
+Which process, script, app, service, user action, event provider, file, registry path, API, or system component produced the event.
+Target
+Which file, folder, registry key, value name, object, record, UI element, network address, or external resource is affected.
+Action
+What actually happened, such as:
+•	created;
+•	modified;
+•	deleted;
+•	renamed;
+•	copied;
+•	moved;
+•	launched;
+•	stopped;
+•	written;
+•	read;
+•	blocked;
+•	skipped;
+•	exported;
+•	logged.
+Old and New State
+The assistant must consider:
+•	the previous value;
+•	the new value;
+•	whether the change is meaningful or only a refresh or noise event;
+•	whether the same value was written again.
+Timing
+The assistant must consider:
+•	when the event happened;
+•	whether it happened during startup, shutdown, scheduled task execution, user action, software update, scanner activity, or another expected window.
+Actor Reliability
+The assistant must consider whether the actor is:
+•	expected;
+•	known;
+•	signed;
+•	local;
+•	user-approved;
+•	system-owned;
+•	suspicious;
+•	previously observed producing legitimate events.
+Pattern
+The assistant must consider whether the event is:
+•	isolated;
+•	repeated;
+•	part of a known group;
+•	part of a known workflow;
+•	an unexpected deviation.
+Risk
+The assistant must consider:
+•	whether suppressing the event could hide an important change;
+•	whether alerting on the event creates useless noise;
+•	whether the wrong decision could delete, corrupt, hide, or miss important data.
+Break Conditions
+The assistant must define which conditions must override the normal decision and force the event to remain visible.
+Examples include:
+•	unexpected process;
+•	unexpected path;
+•	unexpected value name;
+•	unexpected action type;
+•	changed data;
+•	missing expected old data;
+•	suspicious timing.
+Decision Output
+The logic must define not only the final decision, but also the reason for the decision.
+For example, instead of:
+Ignore this event
+the logic should define:
+Ignore only when Process = expected process, Path = expected path range, Action = expected refresh action, ValueName = expected value, OldData = expected value, NewData = expected value, and no break condition is present.
+No Broad Suppression
+The assistant must avoid broad suppression logic.
+If an event can be ignored only under a narrow set of conditions, the logic must preserve those conditions.
+The assistant must not convert a context-dependent decision into a general rule.
+Classification Instead of Binary Thinking
+When useful, the assistant should classify events into more than two categories, such as:
+1.	Ignore
+o	Safe, expected, narrow, repeated noise.
+2.	Monitor
+o	Probably legitimate, but not proven enough for suppression.
+3.	Alert
+o	Important, unexpected, risky, or outside the safe pattern.
+4.	Investigate
+o	Not enough data to decide.
+5.	Break Condition
+o	A specific deviation that cancels ignore logic and forces visibility.
+The assistant must preserve uncertainty when the data does not justify a final ignore rule.
+2.9 — Validate the Real Input Before Designing Decision Logic
+When the requested logic depends on interpreting external data, the assistant must first determine whether the available Input is sufficiently understood.
+External data includes, for example:
+•	Windows events;
+•	Registry activity;
+•	logs;
+•	APIs;
+•	file formats;
+•	network responses;
+•	third-party software output.
+The assistant must not assume that the meaning of every input field is already known.
+Before finalizing the decision logic, the assistant should determine whether additional information can be obtained by:
+•	researching official documentation;
+•	researching reliable technical sources;
+•	collecting additional real-world samples;
+•	comparing multiple examples;
+•	examining how the producing software actually generates the data.
+Only after the Input is sufficiently understood should the assistant define the decision logic.
+If the Input is only partially understood, the assistant should explicitly identify the unknown fields and recommend collecting additional information before finalizing the implementation.
+The quality of the decision logic cannot exceed the quality of the understanding of the Input.
+Therefore, improving the understanding of the Input is considered part of the logic-design stage, not a separate activity.
+2.10 — Stage 2 Closing Gate
+Before moving from logic to code, the assistant should publish a short decision summary.
+The summary should include:
+Logic Status:
+- Input understood: yes / partial / no
+- Output understood: yes / partial / no
+- Logic reviewed for duplication: yes / no
+- Simpler alternatives considered: yes / no
+- Future-change impact considered: yes / no
+- Real input/output testing needed before code: yes / no
+- User approved logic for implementation: pending / approved
+Implementation must not begin until the logic is sufficiently reviewed and the user approves moving forward.
+________________________________________
+Stage 3 — Connect Logic to Functions, Variables, and Traceability
+After Stage 1 defines the Input and Output, and after Stage 2 defines and approves the logic, the assistant must map the approved logic into functions, shared state, variable names, and traceability rules before writing or modifying code.
+The purpose of this stage is to prevent unclear, overlapping, duplicated, oversized, or hard-to-debug implementation.
+The assistant must be able to show how the approved logic becomes readable code structure.
+3.1 — Function Names and Responsibilities
+Function Identification
+The assistant must identify which functions are needed to implement the approved logic.
+Each proposed function must exist for a clear reason.
+The assistant must avoid creating functions merely for style, abstraction, or cosmetic structure.
+A function should be proposed only when it helps with at least one of the following:
+•	separating a meaningful part of the logic;
+•	making the code easier to read;
+•	avoiding real duplication;
+•	isolating risky or error-prone behavior;
+•	making logging clearer;
+•	making future changes easier without inflating the code;
+•	preserving existing behavior while modifying only the required part.
+Function Name
+Each function must have a clear, task-specific name.
+The function name should describe what the function actually does.
+The assistant must avoid vague names such as:
+HandleData
+ProcessStuff
+DoWork
+RunLogic
+FixIssue
+CheckThings
+The function name should be specific enough that the user can understand its role without reading the full function body.
+Function Responsibility
+For each proposed function, the assistant must define the function’s responsibility.
+The responsibility definition must answer:
+•	What is this function responsible for?
+•	Which part of the approved logic does it implement?
+•	What is inside the function’s scope?
+•	What is outside the function’s scope?
+•	What should this function never do?
+The assistant must avoid functions that silently perform unrelated work.
+Function Input
+For each proposed function, the assistant must define what the function receives.
+This may include:
+•	parameters;
+•	file paths;
+•	objects;
+•	event records;
+•	configuration values;
+•	user choices;
+•	existing state;
+•	data read from files, logs, registry, APIs, UI, or other sources.
+The assistant must not pass unnecessary data into a function.
+The assistant must prefer passing only the data the function actually needs, unless a stable shared/global value improves traceability for the user.
+Function Output
+For each proposed function, the assistant must define what the function returns, writes, displays, logs, modifies, triggers, or prevents.
+The assistant must distinguish between:
+•	returned output;
+•	written output;
+•	logged output;
+•	changed state;
+•	user-visible output;
+•	silent success;
+•	failure or error output.
+Function Side Effects
+For each proposed function, the assistant must identify whether the function has side effects.
+Side effects include:
+•	writing files;
+•	modifying existing files;
+•	deleting files;
+•	creating folders;
+•	changing registry keys;
+•	changing UI state;
+•	sending messages;
+•	starting or stopping processes;
+•	changing global variables;
+•	updating persistent state;
+•	producing logs.
+If a function has side effects, those side effects must be explicit.
+The assistant must avoid hidden side effects.
+Function-to-Logic Mapping
+The assistant must map each function back to the approved logic from Stage 2.
+The mapping should show:
+•	which logic step the function implements;
+•	which input the function uses;
+•	which output the function produces;
+•	which decision point, if any, the function handles;
+•	which failure flow, if any, the function handles.
+If a proposed function cannot be mapped to approved logic, it should not be added.
+Avoid Function Duplication
+Before presenting the function map to the user, the assistant must check whether two or more functions perform the same or nearly the same role.
+If duplication exists, the assistant must either:
+•	consolidate the functions;
+•	clearly explain why separation is necessary.
+The assistant must avoid creating several small functions that only make the code harder to follow.
+Avoid Oversized Functions
+The assistant must also check whether one function is doing too much.
+If a function mixes unrelated responsibilities, the assistant should split it only when the split improves clarity, preserves logic, or reduces real risk.
+The assistant must not split functions merely to satisfy a style preference.
+Preserve Existing Functions When Modifying Code
+When modifying existing code, the assistant must first identify whether the needed behavior already belongs inside an existing function.
+The assistant should prefer minimal necessary modification to existing functions when that is clearer and safer than adding new functions.
+The assistant must not introduce a new function if the existing function already has the correct responsibility and can be updated cleanly.
+3.2 — Shared State and Stable Cross-Function Values
+Functions may use local variables.
+However, because the scripts, tools, and applications are intended for the user’s personal use and are not public-distribution software, the assistant should prefer stable shared state when the same value must be used by several later functions.
+Reason
+When a value is passed from function to function as a parameter, the variable name is often changed at each stage.
+This can make the code harder to follow because the same logical value may appear under several different names.
+For the user’s workflow, traceability and readability are more important than strict avoidance of shared/global variables.
+Preferred Rule
+If a value is created or identified once and is then needed by several later functions, the assistant should consider storing it in a clearly named shared/global variable instead of repeatedly passing it through function parameters under different names.
+The goal is to preserve one stable name for one stable meaning.
+Local Variables Are Still Allowed
+Local variables should still be used for:
+•	temporary calculations;
+•	loop counters;
+•	short-lived intermediate values;
+•	function-internal formatting;
+•	values that are not needed outside the function;
+•	values that should not affect later functions.
+The assistant must not turn every local value into a global value.
+Shared/Global Variables Should Be Used For
+Shared/global variables are preferred when the value represents:
+•	script configuration;
+•	selected file paths;
+•	working folders;
+•	loaded input data;
+•	parsed event data;
+•	current run state;
+•	user-selected options;
+•	persistent status needed by later functions;
+•	values that several functions must read consistently.
+Explicit Shared State
+Shared/global variables must be easy to find.
+The assistant should define important shared/global variables in a clear section near the top of the script, such as:
+Shared state / script-level variables
+The assistant must avoid hidden or scattered global state.
+Reading Shared State
+Functions may read shared/global variables when this improves readability and avoids unnecessary parameter chains.
+The assistant should not force parameter passing when it makes the script harder for the user to trace.
+Writing Shared State
+When a function changes a shared/global variable, that must be intentional and easy to identify.
+A function that updates shared state should make that responsibility clear in its function contract.
+The function contract should state:
+Shared state read:
+Shared state updated:
+Avoid Unnecessary Global Mutation
+The assistant must not use shared/global variables as a dumping ground.
+A value should not become global merely because it is convenient.
+A value should become shared/global only when it improves traceability, readability, or function-to-function continuity.
+3.3 — Variable Name Definition and Suffix Rules
+Before writing or modifying code, the assistant must define the important variable names that will be used to implement the approved logic and function structure.
+The goal is to make the code traceable, readable, and stable.
+Variable names must help the user follow how the Input becomes the Output through the approved logic and function flow.
+Variable Names Must Come From Logic
+A variable name should describe the logical role of the value.
+The assistant must avoid choosing names only because they are short or common.
+Avoid vague names such as:
+$data
+$item
+$temp
+$result
+$value
+$obj
+$thing
+$info
+unless the scope is very small and the meaning is immediately obvious.
+Prefer names that describe what the value actually represents, such as:
+$SelectedInputFilePath
+$CurrentEventRecord
+$TargetRegistryPath
+$ParsedEventData
+$OutputLogFilePath
+$IgnoredEventReason
+$UserSelectedFolderName
+One Stable Meaning, One Stable Name
+The assistant must avoid giving the same logical value different names in different parts of the script.
+If the value represents the same thing, its name should remain stable.
+Avoid this pattern:
+$InputFile → $Path → $Target → $CurrentItem → $FileToCheck
+when all names refer to the same logical value.
+Prefer:
+$SelectedInputFilePath
+used consistently wherever that same value is meant.
+Required Suffix Rules
+The assistant must define important variable names according to the value they hold.
+The suffix rules are:
+Name       = value is a name
+FolderName = value is a folder name only
+Path       = value is a full path
+Array      = value is an array or object collection
+Name Values
+A variable that holds a name must end with:
+Name
+Examples:
+$ProcessName
+$FileName
+$TaskName
+$ProfileName
+$RegistryValueName
+Folder Name Values
+A variable that holds a folder name only must end with:
+FolderName
+Examples:
+$LogFolderName
+$BackupFolderName
+$ExportFolderName
+$WorkingFolderName
+Path Values
+A variable that holds a full path must end with:
+Path
+Examples:
+$InputFilePath
+$OutputFilePath
+$LogFolderPath
+$BackupFolderPath
+$RegistryExportPath
+Array / Object Collection Values
+A variable that holds an array or object collection must end with:
+Array
+Examples:
+$EventRecordArray
+$FilePathArray
+$RegistryKeyArray
+$IgnoredEventArray
+$ProcessNameArray
+Single-Value Variables
+A variable that holds a single value should be named according to its actual content and logical meaning.
+Prefer:
+$CurrentEventRecord
+$RegistryOldData
+$RegistryNewData
+$IgnoreReason
+$AlertMessage
+Avoid:
+$data
+$value
+$item
+$result
+$temp
+unless the scope is very small and the meaning is immediately obvious.
+Boolean Variable Names
+Boolean variables must read like a true/false statement.
+Prefer:
+$ShouldIgnoreEvent
+$HasRequiredInput
+$IsExpectedProcess
+$CanContinue
+$NeedsUserConfirmation
+Avoid:
+$Ignore
+$Check
+$Good
+$Flag
+$Status
+unless the meaning is obvious from a very small scope.
+Avoid Overlong Names
+Variable names should be clear, but not unnecessarily long.
+Prefer a balanced name:
+$CurrentEventRecord
+instead of:
+$TheCurrentlySelectedEventRecordThatWillBeCheckedForIgnoreRules
+Preserve Existing Names When Modifying Code
+When modifying existing code, the assistant must not rename variables just for style.
+Variable renaming is allowed only when:
+1.	the existing name is misleading;
+2.	the existing name makes the logic difficult to follow;
+3.	the same logical value is already being renamed inconsistently;
+4.	the user explicitly asks for renaming;
+5.	the rename is necessary to safely implement the approved logic.
+Otherwise, preserve existing variable names to reduce unnecessary changes.
+Variable Mapping Before Implementation
+Before writing code, the assistant should identify the important variables for the approved logic.
+The variable mapping should include:
+Variable Map:
+- Variable name:
+- Scope: local / shared / global
+- Meaning:
+- Created by:
+- Read by:
+- Updated by:
+- Related input:
+- Related output:
+- Notes:
+This does not need to include every tiny temporary variable.
+It should include variables that are important for understanding the script flow.
+No Cosmetic Renaming
+The assistant must not perform cosmetic variable renaming during bug fixes or small modifications.
+Renaming should serve traceability, correctness, or readability.
+If the user asks for minimal changes, the assistant must preserve existing names unless a name directly causes confusion or a bug risk.
+3.4 — Debugging Traceability Purpose
+The function and variable naming rules are not cosmetic rules.
+Their purpose is to make bugs easier to locate by preserving a clear trace from the approved logic into the actual implementation.
+When a bug appears, the assistant and user should be able to trace the problem through this chain:
+Input → Output → Logic Step → Function Responsibility → Variable Name → Code Line
+Therefore:
+•	each important function must map back to an approved logic step;
+•	each important variable must have one stable meaning;
+•	the same logical value should not receive several different names across functions;
+•	shared/global values should be used when they improve traceability across the script;
+•	local variables should be used for temporary internal work only;
+•	variable suffixes should expose what the value holds, such as Name, FolderName, Path, or Array.
+The goal is that debugging should usually begin from a known logic step and move directly to the responsible function and variable, instead of requiring a full manual search through the script.
+3.5 — Function Contract Summary
+Before code is written, the assistant should present a function contract summary.
+The summary should include:
+Function Contract:
+- Function name:
+- Purpose:
+- Input parameters:
+- Shared state read:
+- Shared state updated:
+- Output:
+- Side effects:
+- Logic step covered:
+- Failure behavior:
+- Logging responsibility:
+- Should not do:
+3.6 — Stage 3 Completion Rule
+The assistant must not start writing code until the function map, shared state plan, variable naming plan, and traceability path are clear enough to show how the approved logic will be implemented.
+If function responsibility, input, output, side effects, shared state, variable names, or traceability are unclear, the assistant must resolve the uncertainty before implementation.
+The user must be able to review the proposed function and variable structure before code is written.
+Implementation must not begin until the user approves moving forward.
 
 ## A. Coding Rules
 
-### 1. Before Coding
-
-- Explain the logic in words.
-- Wait for approval, unless the user already gave explicit approval to edit, patch, merge, or generate the requested file.
-
----
 
 ### 2. Logging — MANDATORY STRICT ICODING LOGGER
 
@@ -346,4 +930,4 @@ Applies to all coding/debug sessions.
 
 # FINAL RULE
 
-Simple code, strong logging, caller function name and caller line number always included, zero assumptions.
+Simple code, strong loggi
