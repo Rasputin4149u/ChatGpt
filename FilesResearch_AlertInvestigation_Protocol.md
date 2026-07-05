@@ -1,13 +1,44 @@
-# === RAW_CHECK_ID: 0001 ===
-# 2026-06-26 10:25:30 — [FilesResearch_AlertInvestigation]
+# 2026-07-05 06:03:21 — RAW_CHECK_ID: 0002
+
+# 2026-07-05 06:03:21 — [FilesResearch_AlertInvestigation]
 
 ## 2026-06-26 10:25:30 — Load Prerequisite File-Analysis Protocol
-GeneratedAt: 2026-06-26 10:25:30 Asia/Jerusalem  
-Version: LinkV1  
+
+GeneratedAt: 2026-07-05 06:03:21 Asia/Jerusalem
+Version: LinkV2_TaskCacheTreeSafeRange
 Purpose: Detailed instruction page for alert/log/security-event investigation, including Sysmon, registry, services, Scheduled Tasks, TaskCache, process/path alerts, ignore decisions, monitoring decisions, and evidence-backed risk classification.
+
+## 2026-07-05 06:03:21 — Mandatory Top File-Analysis Protocol Load
+
+Before using this alert-investigation protocol, load and apply the file-analysis protocol below:
+
+```text
+[FilesAnalyzingTools]
+LOAD INSTRUCTIONS FROM:
+https://raw.githubusercontent.com/Rasputin4149u/ChatGpt/refs/heads/main/FilesAnalyzingTools
+```
+
+### 2026-07-05 06:03:21 — Required FilesAnalyzingTools Evidence Package
+
+Use `FilesAnalyzingTools` to prepare or read the uploaded file evidence package before making an alert decision.
+
+Open these artifacts first when available:
+
+1. `analysis_summary.txt`
+2. `manifests/manifest.json`
+3. `logs/extraction_log.txt`
+4. `extracted_text/*_numbered_lines.txt`
+5. `extracted_text/keyword_hits.csv`
+6. `extracted_text/timestamps.csv`
+7. `tables/*` for spreadsheet/table evidence
+8. `previews/*`, `images/*`, `contact_sheets/*`, or video-frame artifacts when visual evidence exists
+9. `subtitles/*`, `srt_vtt_timeline.csv`, or video timelines when video/SRT evidence exists
+
+The prepared file evidence is the primary investigation layer. Internet research and user recurrence references are supporting layers, not replacements for uploaded-file evidence.
 
 Parent index:
 https://raw.githubusercontent.com/Rasputin4149u/ChatGpt/refs/heads/main/FilesResearch_Index_LinkV1.md
+
 ```text
 [FilesAnalyzingTools]
 LOAD INSTRUCTIONS FROM:
@@ -37,23 +68,23 @@ This protocol is not primarily for editing code or analyzing the user’s projec
 
 ## 2026-06-26 10:25:30 — In Scope
 
-- Registry watcher alerts
-- Scheduled Task / TaskCache alerts
-- Windows service alerts
-- Process/path/value-change alerts
-- Product/vendor update alerts
-- Security-tool, uninstall-tool, monitoring-tool, or system-change alerts
-- Repeated alerts where the user wants an ignore recommendation
-- User-provided reference searches or function outputs that show recurrence, frequency, key grouping, or known ranges
+* Registry watcher alerts
+* Scheduled Task / TaskCache alerts
+* Windows service alerts
+* Process/path/value-change alerts
+* Product/vendor update alerts
+* Security-tool, uninstall-tool, monitoring-tool, or system-change alerts
+* Repeated alerts where the user wants an ignore recommendation
+* User-provided reference searches or function outputs that show recurrence, frequency, key grouping, or known ranges
 
 ## 2026-06-26 10:25:30 — Out of Scope Unless Explicitly Requested
 
-- Editing the user’s project functions
-- Refactoring code
-- Debugging implementation logic
-- Writing detection code
-- Creating ignore-rule code
-- Treating recurrence output as proof of safety by itself
+* Editing the user’s project functions
+* Refactoring code
+* Debugging implementation logic
+* Writing detection code
+* Creating ignore-rule code
+* Treating recurrence output as proof of safety by itself
 
 If code/debug files are uploaded or the user asks to edit/fix/generate/validate code, load and apply the separate `Icoding` protocol before doing code work.
 
@@ -65,10 +96,10 @@ The uploaded alert file is the **primary evidence**.
 
 The user’s function output, previous searches, or recurrence indicators are **secondary evidence** used only to answer:
 
-- Did this alert repeat?
-- Did it repeat with the same key/value/data/process?
-- Is the repetition stable enough to define an ignore range?
-- Does recurrence reduce noise, or does it reveal suspicious persistence?
+* Did this alert repeat?
+* Did it repeat with the same key/value/data/process?
+* Is the repetition stable enough to define an ignore range?
+* Does recurrence reduce noise, or does it reveal suspicious persistence?
 
 Never conclude that an alert is safe only because it repeats.
 
@@ -246,8 +277,8 @@ Use this when the event is expected but produces repeated alerts.
 
 This is the main candidate for:
 
-- Ignore completely
-- Ignore within safe range
+* Ignore completely
+* Ignore within safe range
 
 ## 2026-06-26 10:25:30 — Classification C: Monitor
 
@@ -381,19 +412,19 @@ Reason: <one to three sentences>
 
 Use a table with these columns:
 
-| Field | Finding |
-|---|---|
-| Alert group | <group name> |
-| Key/path | <key/path> |
-| Value | <value> |
-| Data / old data | <data comparison> |
-| Process | <process> |
-| Component/vendor | <component/vendor> |
-| Legitimate purpose | <summary> |
-| Known abuse possibility | <summary> |
-| Local match quality | <matches expected / partial match / mismatch / unknown> |
-| Recurrence indication | <from user reference/functions/file> |
-| Decision | <final decision> |
+| Field                   | Finding                                                 |
+| ----------------------- | ------------------------------------------------------- |
+| Alert group             | <group name>                                            |
+| Key/path                | <key/path>                                              |
+| Value                   | <value>                                                 |
+| Data / old data         | <data comparison>                                       |
+| Process                 | <process>                                               |
+| Component/vendor        | <component/vendor>                                      |
+| Legitimate purpose      | <summary>                                               |
+| Known abuse possibility | <summary>                                               |
+| Local match quality     | <matches expected / partial match / mismatch / unknown> |
+| Recurrence indication   | <from user reference/functions/file>                    |
+| Decision                | <final decision>                                        |
 
 ## 2026-06-26 10:25:30 — Web Verification Section
 
@@ -465,6 +496,60 @@ Do not automatically ignore if:
 3. The task executable path is unexpected
 4. The same alert includes `Id`, `SD`, or executable path changes
 5. The task points to user-writable locations
+
+## 2026-07-05 06:03:21 — Confirmed Safe Ignore Range: Microsoft TaskCache Tree `Index` Refresh Noise
+
+Use this specific rule only for the exact Microsoft `TaskCache\Tree` pattern below.
+
+```text
+Ignore recommendation: Ignore only within range
+```
+
+### 2026-07-05 06:03:21 — Safe Ignore Range
+
+* Key/path prefix:
+  `HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache\Tree\Microsoft\Windows\`
+* Allowed task paths:
+
+  * `Microsoft\Windows\UpdateOrchestrator\Schedule Work`
+  * `Microsoft\Windows\UpdateOrchestrator\Schedule Scan`
+  * `Microsoft\Windows\SoftwareProtectionPlatform\SvcRestartTask`
+  * `Microsoft\Windows\Flighting\OneSettings\RefreshCache`
+* Value:
+  `Index`
+* Action/detail:
+  `Modified` / `Value Set`
+* Allowed data:
+  `0x00000003 (3)`
+* Allowed old data:
+  `0x00000003 (3)`
+* Allowed process:
+  `svchost.exe`
+* Allowed process path:
+  `C:\Windows\System32\svchost.exe` or device-path equivalent for the same Windows system executable
+
+### 2026-07-05 06:03:21 — Break Conditions
+
+Do **not** ignore if any of these occur:
+
+* Value is `SD`
+* Value is `Id`
+* Value is `Actions`
+* Value is `Triggers`
+* New task path appears
+* Data changes to anything other than `0x00000003 (3)`
+* `OldData` is different or missing unexpectedly
+* Process is not `svchost.exe`
+* Process path is not `C:\Windows\System32\svchost.exe` or the equivalent device path
+* Task path is Mozilla, Google, unknown vendor, or any non-Microsoft path
+* Task path points to a user-writable executable location
+* Task name and executable/vendor do not match
+* `TaskCache\Tree` and `TaskCache\Tasks\{GUID}` identity do not match
+* A companion alert includes task creation, task deletion, executable path creation, command/action change, trigger change, or security descriptor change
+
+### 2026-07-05 06:03:21 — Preservation Of Older General Rules
+
+This specific Microsoft `Index` refresh rule does not replace the general `TaskCache\Tree`, `Index`, `Id`, `SD`, executable-path, Monitor, or Do Not Ignore rules below. It only covers the narrow repeated-noise pattern listed in this section.
 
 ## 2026-06-26 10:25:30 — `Id` GUID Changes
 
