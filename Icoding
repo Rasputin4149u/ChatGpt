@@ -96,8 +96,10 @@ After input and output are characterized, and before writing or modifying code, 
 The logic must explain how the defined input becomes the defined output.
 
 General 
-One controller(file or function) owns the workflow; each sub-controller owns a category(Init vars, Load input files......) any data can be returnd to the uper controler)
-in that way we control the flow and the data.
+One controller owns and coordinates the complete workflow.
+Each sub-controller owns one meaningful category or domain, receives documented input from its upper controller, and returns documented output or failure information.
+The upper controller owns shared workflow state and decides execution order, continuation, retry, skip, or stop behavior.
+Sub-controllers must not directly control or modify other sub-controllers. Do not create a sub-controller for trivial operations that belong clearly inside an existing responsibility.
 
 ### 2.1 Normal Flow
 
