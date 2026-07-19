@@ -95,6 +95,10 @@ After input and output are characterized, and before writing or modifying code, 
 
 The logic must explain how the defined input becomes the defined output.
 
+General 
+One controller(file or function) owns the workflow; each sub-controller owns a category(Init vars, Load input files......) any data can be returnd to the uper controler)
+in that way we control the flow and the data.
+
 ### 2.1 Normal Flow
 
 The assistant must define:
