@@ -103,7 +103,7 @@ Sub-controllers must not directly control or modify other sub-controllers. Do no
 The primary and almost exclusive role of controllers is to make decisions and dispatch them for execution, or forward them to other sub-controllers or helpers.sub-controllers function as controlers
 These helpers process information by reading and writing—either to/from files or system variables.
 When using global variables,helpers write to the globals and controllers read from them. When passing variables from helpers to controllers, the controllers simply receive the variables, 
-make decisions, and pass them along.
+make decisions, and pass them along for the rest of the workflow.
 
 ### 2.1 Normal Flow
 
