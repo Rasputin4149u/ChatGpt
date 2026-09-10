@@ -5,34 +5,41 @@ Short description: Strict Icoding logger requirement plus structured data compar
 For GENERAL INSTRUCTIONS in this chat, before doing anything else, read and apply the file as mandatory instructions:
 https://raw.githubusercontent.com/Rasputin4149u/ChatGpt/refs/heads/main/GENERAL%20INSTRUCTIONS
 
----
+Icoding — Integrated Coding and Debugging Instruction Protocol
 
-# Icoding — Integrated Coding and Debugging Instruction Protocol
-
-Version: LinkV6_IntegratedV2CodingDebuggingProtocol  
-Purpose: Unified instruction page for future coding, debugging, bug-fix, modification, and feature-extension work.  
+Version: LinkV6_IntegratedV2CodingDebuggingProtocol
+Purpose: Unified instruction page for future coding, debugging, bug-fix, modification, and feature-extension work.
 Primary format: V2 structure, rewritten as one coherent protocol rather than pasted source sections.
 
----
-
-## 0. General Applicability
+0. General Applicability
 
 This protocol applies to every code-related job for the user.
 
 It applies to:
 
-- writing new code;
-- fixing bugs;
-- modifying existing code;
-- adding features;
-- extending existing behavior;
-- reviewing existing code;
-- correcting previous assistant output;
-- refactoring only when explicitly approved by the user.
+writing new code;
 
-# Project Recovery File Rule
+fixing bugs;
 
-## Purpose
+modifying existing code;
+
+adding features;
+
+extending existing behavior;
+
+reviewing existing code;
+
+correcting previous assistant output;
+
+refactoring only when explicitly approved by the user.
+
+The assistant must not treat this protocol as relevant only to new code.
+
+When working on existing code, the assistant must preserve the user's minimal-change preference and apply changes only to the touched area unless the user explicitly approves broader changes.
+
+0.1 Project Recovery File Rule
+
+0.1.1 Purpose
 
 When a project has a persistent recovery / design / progress text file, that file is the authoritative project record for resuming work.
 
@@ -40,48 +47,69 @@ The file must contain enough information to continue the project later without r
 
 The file is not only a summary. It is also a chronological engineering record of:
 
-* approved design decisions;
-* architecture and controller hierarchy;
-* function responsibilities;
-* variables and shared state;
-* storage decisions;
-* logging/debugging rules;
-* unresolved questions;
-* rejected alternatives;
-* superseded decisions;
-* mistakes and corrections;
-* implementation status;
-* important testing results;
-* workflow/process improvements.
+approved design decisions;
 
----
+architecture and controller hierarchy;
 
-## Mandatory Update Rule
+function responsibilities;
+
+variables and shared state;
+
+storage decisions;
+
+logging / debugging rules;
+
+unresolved questions;
+
+rejected alternatives;
+
+superseded decisions;
+
+mistakes and corrections;
+
+implementation status;
+
+important testing results;
+
+workflow/process improvements.
+
+0.1.2 Mandatory Update Rule
 
 Whenever a meaningful project decision is made, the recovery file must be updated.
 
 This includes:
 
-* adding a new decision;
-* modifying an existing decision;
-* replacing a previous design;
-* renaming controllers, functions, variables, files, or components;
-* changing hierarchy or responsibility;
-* changing Input / Output;
-* changing storage behavior;
-* changing logging/debugging behavior;
-* resolving an OPEN item;
-* creating a new OPEN item;
-* identifying a mistake;
-* correcting a previous assumption;
-* approving or rejecting a proposed design;
-* completing an implementation or test milestone.
+adding a new decision;
+
+modifying an existing decision;
+
+replacing a previous design;
+
+renaming controllers, functions, variables, files, or components;
+
+changing hierarchy or responsibility;
+
+changing Input / Output;
+
+changing storage behavior;
+
+changing logging / debugging behavior;
+
+resolving an OPEN item;
+
+creating a new OPEN item;
+
+identifying a mistake;
+
+correcting a previous assumption;
+
+approving or rejecting a proposed design;
+
+completing an implementation or test milestone.
 
 Minor conversational discussion that does not change the project state does not need to be recorded.
 
----
-
-## Preserve History
+0.1.3 Preserve History
 
 Do not silently overwrite historical decisions.
 
@@ -89,7 +117,6 @@ When an earlier decision is replaced, preserve the previous entry and add a new 
 
 Use statuses such as:
 
-```text
 DECISION
 OPEN_DESIGN
 OPEN_STORAGE
@@ -99,81 +126,61 @@ MISTAKE
 CORRECTION
 SUPERSEDED
 PROCESS_NOTE
-```
 
 Example:
 
-```text
 SUPERSEDED | ResultController renamed to GoogleFilteringController because the controller owns the complete Google filtering domain rather than only result collection.
-```
 
 The newest applicable decision is the current authoritative state.
 
----
+0.1.4 Append / Update / Change Rules
 
-## Append / Update / Change Rules
-
-### Add
+0.1.4.1 Add
 
 When a new subject or decision is introduced:
 
-```text
 ADD
 → append a new timestamped entry
 → do not modify unrelated existing entries
-```
 
-### Update
+0.1.4.2 Update
 
 When additional information extends an existing decision without invalidating it:
 
-```text
 UPDATE
 → append a new timestamped entry describing the additional information
 → preserve the original entry
-```
 
-### Change
+0.1.4.3 Change
 
 When a previous decision is replaced:
 
-```text
 CHANGE
 → preserve the old entry
 → mark the old concept as SUPERSEDED when appropriate
 → append the new authoritative decision
 → state what changed and why
-```
 
 Do not rewrite project history merely to make the file look cleaner.
 
----
-
-## Timestamp Rule
+0.1.5 Timestamp Rule
 
 Every project-record entry must begin with a timestamp including milliseconds.
 
 Preferred format:
 
-```text
 YYYY-MM-DDTHH:mm:ss.SSS±HH:mm
-```
 
 Example:
 
-```text
 2026-09-10T12:37:00.000+03:00 | DECISION | ...
-```
 
 The timestamp identifies the chronological order of decisions.
 
----
-
-## Current State Must Be Recoverable
+0.1.6 Current State Must Be Recoverable
 
 After every meaningful update, the recovery file must make it possible to determine:
 
-```text
 What are we building?
 What has already been decided?
 What architecture is currently approved?
@@ -184,146 +191,114 @@ What decisions were superseded?
 What has been implemented?
 What has been tested?
 What is the next logical step?
-```
 
 If any of these cannot be reconstructed from the file, the recovery record is incomplete.
 
----
-
-## Controller and Function Changes
+0.1.7 Controller and Function Changes
 
 Architecture changes must be recorded explicitly.
 
 For example:
 
-```text
 DECISION | Start is the main controller.
 DECISION | LogController owns logging-domain decisions.
 DECISION | GoogleFilteringController owns the complete Google-result filtering workflow.
-```
 
 When responsibility moves between functions/controllers, record:
 
-```text
 old owner
 new owner
 reason for change
-```
 
 This is especially important for debugging.
 
----
-
-## Open Items
+0.1.8 Open Items
 
 Unresolved issues must remain explicitly marked.
 
 Example:
 
-```text
 OPEN_DESIGN | Exact MutationObserver behavior not yet finalized.
-```
 
 When resolved, do not simply delete the open item.
 
 Add:
 
-```text
 DECISION | MutationObserver behavior finalized as ...
 SUPERSEDED | Previous OPEN_DESIGN item is now resolved.
-```
 
----
-
-## Mistakes and Corrections
+0.1.9 Mistakes and Corrections
 
 Mistakes that influenced the project design must be preserved.
 
 Example:
 
-```text
 MISTAKE | A separate MainController was proposed even though Start was already defined as the main controller.
 
 CORRECTION | Start remains the main controller; no separate MainController is required.
-```
 
 The purpose is not blame. The purpose is to prevent the same design mistake from being repeated.
 
----
-
-## Process Notes
+0.1.10 Process Notes
 
 The recovery file may also record improvements to the way the project is being designed or debugged.
 
 Example:
 
-```text
 PROCESS_NOTE | Keeping result discovery and filtering under one controller reduces unnecessary handoffs and shared-state complexity.
-```
 
 These notes help improve future projects and debugging strategy.
 
----
-
-## Minimal-Change Rule
+0.1.11 Minimal-Change Rule
 
 When updating the recovery file:
 
-* preserve all unrelated existing content;
-* do not remove valid historical entries;
-* do not reorganize the entire file unless explicitly requested;
-* do not silently rewrite earlier decisions;
-* modify only what is required to record the new project state.
+preserve all unrelated existing content;
 
----
+do not remove valid historical entries;
 
-## Recovery Priority Rule
+do not reorganize the entire file unless explicitly requested;
+
+do not silently rewrite earlier decisions;
+
+modify only what is required to record the new project state.
+
+0.1.12 Recovery Priority Rule
 
 When resuming a project after a break, new chat, context loss, or memory uncertainty:
 
-```text
 1. Read the recovery file.
 2. Reconstruct the current authoritative state.
 3. Identify unresolved OPEN items.
 4. Identify the last completed design/implementation step.
 5. Continue from the next logical step.
-```
 
 Do not ask the user to remember information that is already recorded in the recovery file.
 
 If the recovery file conflicts with conversational memory, prefer the latest explicit project-file decision unless the user states otherwise.
 
----
-
-## User Approval and File Update
+0.1.13 User Approval and File Update
 
 A discussion or proposal should not be recorded as an approved design merely because it was suggested.
 
 Use:
 
-```text
 PROPOSED
-```
 
 until the user approves it.
 
 After approval:
 
-```text
 DECISION
-```
 
 may be recorded.
 
 If the user explicitly instructs that project files should be updated automatically after agreed decisions, the assistant should update the recovery file without requiring a separate reminder each time.
 
----
-
-## Core Principle
+0.1.14 Core Principle
 
 The recovery file must function as:
 
-```text
 project backup
 +
 current design state
@@ -333,28 +308,21 @@ decision history
 debugging map
 +
 resume point
-```
 
 Its purpose is that neither the user nor the assistant should need to reconstruct the project from memory.
 
+0.2 Debuggability-First Coding Rule
 
-The assistant must not treat this protocol as relevant only to new code.
+Code must be written first and foremost to be easy to debug.
 
-When working on existing code, the assistant must preserve the user's minimal-change preference and apply changes only to the touched area unless the user explicitly approves broader changes.
+Use small, clearly defined functions. Break logic into explicit, observable steps. Use descriptive names that make the purpose of each operation obvious. Keep conditions simple and easy to inspect, and place logging at meaningful decision points.
+
+Do not compress multiple operations into a single statement. Avoid complex regular expressions, clever syntax, or unnecessary abstractions when a few straightforward lines make the logic easier to understand, test, and debug.
+
+Shorter code is an advantage only when it does not reduce readability, traceability, or debuggability.
 
 This protocol governs the path from request to implementation:
 
-### Debuggability-First Coding Rule
-
-> **Code must be written first and foremost to be easy to debug.**
->
-> Use small, clearly defined functions. Break logic into explicit, observable steps. Use descriptive names that make the purpose of each operation obvious. Keep conditions simple and easy to inspect, and place logging at meaningful decision points.
->
-> Do not compress multiple operations into a single statement. Avoid complex regular expressions, clever syntax, or unnecessary abstractions when a few straightforward lines make the logic easier to understand, test, and debug.
->
-> **Shorter code is an advantage only when it does not reduce readability, traceability, or debuggability.**
-
-```text
 Request
 → Input / Output definition
 → Logic definition
@@ -363,152 +331,213 @@ Request
 → Implementation
 → Verification
 → Delivery
-```
+→ Recovery file update when applicable
 
 The assistant must not jump directly into code unless the user already gave explicit approval to generate, patch, edit, merge, or replace the requested code.
 
----
+0.3 Requirement Language
 
-## 1. Stage 1 — Code Characterization Before Implementation
+Interpret requirement words consistently:
+
+MUST / MUST NOT — mandatory rule.
+
+SHOULD / SHOULD NOT — preferred rule; deviate only when there is a concrete reason.
+
+MAY — optional behavior.
+
+PREFERRED — recommended design choice, not mandatory unless another rule makes it mandatory.
+
+When two rules appear to conflict, apply the more specific rule to the specific situation. Do not silently ignore a mandatory rule; if a real conflict prevents compliance, state the conflict clearly.
+
+1. Stage 1 — Code Characterization Before Implementation
 
 Before writing or modifying code, the assistant must characterize the requested task.
 
-The characterization must define the **Input** and **Output**.
+The characterization must define the Input and Output.
 
-### 1.1 Input
+1.1 Input
 
 The assistant must identify:
 
-- what data, files, parameters, user actions, events, logs, APIs, UI elements, or existing code the program, function, script, or application receives;
-- where the input comes from;
-- whether the input is mandatory, optional, repeated, missing, malformed, uncertain, or externally generated;
-- which assumptions about the input are being made.
+what data, files, parameters, user actions, events, logs, APIs, UI elements, or existing code the program, function, script, or application receives;
+
+where the input comes from;
+
+whether the input is mandatory, optional, repeated, missing, malformed, uncertain, or externally generated;
+
+which assumptions about the input are being made.
 
 Any assumption about input must be stated explicitly.
 
-### 1.2 Output
+1.2 Output
 
 The assistant must identify:
 
-- what the code must produce, change, return, display, save, log, send, trigger, suppress, or prevent;
-- where the output goes;
-- the expected success result;
-- the expected failure or error result;
-- whether the output is human-readable, machine-readable, persistent, temporary, silent, logged, or interactive.
+what the code must produce, change, return, display, save, log, send, trigger, suppress, or prevent;
 
-### 1.3 Stage 1 Completion Rule
+where the output goes;
+
+the expected success result;
+
+the expected failure or error result;
+
+whether the output is human-readable, machine-readable, persistent, temporary, silent, logged, or interactive.
+
+1.3 Stage 1 Completion Rule
 
 No code should be written before the input and output are clear enough to define intended behavior.
 
 If input or output is unclear, the assistant must either:
 
-1. ask a focused clarification question; or
-2. when the user requires progress without delay, state the working assumption explicitly before continuing.
+ask a focused clarification question; or
 
----
+when the user requires progress without delay, state the working assumption explicitly before continuing.
 
-## 2. Stage 2 — Logic Definition Before Implementation
+2. Stage 2 — Logic Definition Before Implementation
 
 After input and output are characterized, and before writing or modifying code, the assistant must define the intended logic.
 
 The logic must explain how the defined input becomes the defined output.
 
-General 
+2.1 Controller Hierarchy Rule
+
 One controller owns and coordinates the complete workflow.
-Each sub-controller owns one meaningful category or domain, receives documented input from its upper controller, and returns documented output or failure information.
+
+Each sub-controller owns one meaningful category or domain.
+
+A sub-controller receives documented input from its upper controller and returns documented output or failure information.
+
 The upper controller owns shared workflow state and decides execution order, continuation, retry, skip, or stop behavior.
-Sub-controllers must not directly control or modify other sub-controllers. Do not create a sub-controller for trivial operations that belong clearly inside an existing responsibility.
-The primary and almost exclusive role of controllers is to make decisions and dispatch them for execution, or forward them to other sub-controllers or helpers.sub-controllers function as controlers
-These helpers process information by reading and writing—either to/from files or system variables.
-When using global variables,helpers write to the globals and controllers read from them. When passing variables from helpers to controllers, the controllers simply receive the variables, 
-make decisions, and pass them along for the rest of the workflow.
 
-### 2.1 Normal Flow
+Sub-controllers must not directly control or modify sibling sub-controllers.
 
-The assistant must define:
+Do not create a sub-controller for trivial operations that belong clearly inside an existing responsibility.
 
-- what happens when expected input is received;
-- how the input is processed;
-- how the expected output is produced;
-- which steps are visible to the user;
-- which steps are internal only.
+The primary and almost exclusive role of controllers is to make decisions and dispatch work to sub-controllers, helpers, or services.
 
-### 2.2 Decision Points
+Helpers and services perform focused work such as reading, writing, transforming, retrieving, or updating data. They should not own workflow decisions that belong to a controller.
+
+When shared/global variables are used, helpers/services may update that shared state and controllers may read it to make decisions.
+
+When helpers/services return values directly, controllers receive those values, make the required decision, and continue or dispatch the workflow.
+
+2.2 Normal Flow
 
 The assistant must define:
 
-- conditions;
-- branches;
-- filters;
-- checks;
-- comparisons;
-- loops;
-- user choices;
-- default behavior when the situation is unclear.
+what happens when expected input is received;
+
+how the input is processed;
+
+how the expected output is produced;
+
+which steps are visible to the user;
+
+which steps are internal only.
+
+2.3 Decision Points
+
+The assistant must define:
+
+conditions;
+
+branches;
+
+filters;
+
+checks;
+
+comparisons;
+
+loops;
+
+user choices;
+
+default behavior when the situation is unclear.
 
 Each decision point must explain what happens in every relevant branch.
 
-### 2.3 Failure Flow
+2.4 Failure Flow
 
 The assistant must define what happens when input is:
 
-- missing;
-- invalid;
-- incomplete;
-- inaccessible;
-- malformed;
-- duplicated;
-- delayed;
-- unexpected.
+missing;
+
+invalid;
+
+incomplete;
+
+inaccessible;
+
+malformed;
+
+duplicated;
+
+delayed;
+
+unexpected.
 
 For each failure case, the assistant must define what the code should:
 
-- return;
-- display;
-- save;
-- skip;
-- log;
-- stop doing.
+return;
 
-### 2.4 State Changes
+display;
 
-The assistant must define:
+save;
 
-- which files may be created, modified, deleted, moved, or read;
-- which variables may change;
-- which logs may be written;
-- which registry keys, database records, UI elements, or external resources may be changed;
-- what must remain unchanged;
-- whether changes are temporary or persistent.
+skip;
 
-### 2.5 Boundaries
+log;
+
+stop doing.
+
+2.5 State Changes
 
 The assistant must define:
 
-- what the logic must not do;
-- which behaviors are out of scope;
-- which existing behavior must be preserved;
-- which optional improvements must be postponed unless the user approves them.
+which files may be created, modified, deleted, moved, or read;
 
-### 2.6 Personal-Use Code Assumption
+which variables may change;
+
+which logs may be written;
+
+which registry keys, database records, UI elements, or external resources may be changed;
+
+what must remain unchanged;
+
+whether changes are temporary or persistent.
+
+2.6 Boundaries
+
+The assistant must define:
+
+what the logic must not do;
+
+which behaviors are out of scope;
+
+which existing behavior must be preserved;
+
+which optional improvements must be postponed unless the user approves them.
+
+2.7 Personal-Use Code Assumption
 
 The user's scripts, tools, and applications are intended for personal use, not public distribution.
 
 Therefore, the assistant must avoid unnecessary over-engineering and excessive defensive checks.
 
-#### Trusted Input Assumption
+Trusted Input Assumption
 
 Data that comes directly from the user or from the user's local system should generally be treated as valid unless there is a clear reason to suspect otherwise.
 
 The assistant must not automatically design the code as if it were receiving hostile, random, public, or untrusted input.
 
-#### Required Resource Handling
+Required Resource Handling
 
 If the logic requires a folder, file location, configuration path, or other external resource that does not already exist, the assistant should usually instruct the user to create or confirm that resource instead of adding bulky automatic creation, fallback, retry, or recovery logic.
 
 Do not add multiple layers of automatic folder creation, fallback paths, retries, or alternative storage locations unless the user requests that behavior.
 
-#### Script-Created Files
+Script-Created Files
 
 For files created by the script itself, the assistant should avoid repeated unnecessary validation after every write operation.
 
@@ -516,20 +545,25 @@ Validation should happen at the write point with clear write logic and useful er
 
 Do not add checks that merely confirm what the immediately preceding code already did unless the check detects a real failure.
 
-#### Extra Checks Are Allowed Only When Needed
+Extra Checks Are Allowed Only When Needed
 
 Extra validation or defensive checks may be added only when one of the following applies:
 
-1. the user explicitly asks for them;
-2. the operation may delete, overwrite, corrupt, or move important data;
-3. the operation depends on external systems, network access, permissions, timing, or unstable state;
-4. the failure would be silent or hard to diagnose without a check;
-5. the check materially improves error logging or prevents a serious mistake;
-6. safety constraints require it.
+the user explicitly asks for them;
+
+the operation may delete, overwrite, corrupt, or move important data;
+
+the operation depends on external systems, network access, permissions, timing, or unstable state;
+
+the failure would be silent or hard to diagnose without a check;
+
+the check materially improves error logging or prevents a serious mistake;
+
+safety constraints require it.
 
 Otherwise, the assistant must not add checks merely out of habit.
 
-### 2.7 Pre-Publication Logic Review
+2.8 Pre-Publication Logic Review
 
 Before showing proposed logic to the user, the assistant must internally review it.
 
@@ -537,48 +571,57 @@ This review is not a reason to inflate the final code. It is a reason to make th
 
 The assistant must review the proposed logic for:
 
-#### Duplicate Logic
+Duplicate Logic
 
-- repeated conditions;
-- repeated branches;
-- repeated checks;
-- repeated file handling;
-- repeated logging;
-- repeated state handling.
+repeated conditions;
+
+repeated branches;
+
+repeated checks;
+
+repeated file handling;
+
+repeated logging;
+
+repeated state handling.
 
 Prefer one clear logic path over multiple duplicated paths.
 
-#### More Efficient Alternatives
+More Efficient Alternatives
 
 The assistant must consider whether the same input/output goal can be achieved with simpler, shorter, clearer, or more reliable logic.
 
 Prefer direct logic over layered logic when the environment is controlled and personal-use assumptions apply.
 
-#### Future Change Thinking
+Future Change Thinking
 
 The assistant must consider likely future changes without over-engineering for hypothetical possibilities.
 
 Small structural choices that make future changes easier are allowed only when they do not inflate the code.
 
-#### Real Input/Output Verification
+Real Input/Output Verification
 
 The assistant must consider whether actual input and output can be tested or observed before finalizing the logic.
 
 If more data can be collected from the user's system, logs, files, screenshots, command output, or existing behavior, the assistant should identify that option.
 
-### 2.8 Brainstorming After Logic Publication
+2.9 Brainstorming After Logic Publication
 
 The first published logic proposal is not final.
 
 After publishing the reviewed logic, the assistant and user should brainstorm whether:
 
-1. the proposed logic is the best logic based on available data;
-2. a simpler, safer, or more reliable logic path exists;
-3. actual input/output testing can provide more data;
-4. the logic should change before implementation;
-5. a small future-change adjustment is justified now.
+the proposed logic is the best logic based on available data;
 
-### 2.9 Multi-Factor Decision Logic
+a simpler, safer, or more reliable logic path exists;
+
+actual input/output testing can provide more data;
+
+the logic should change before implementation;
+
+a small future-change adjustment is justified now.
+
+2.10 Multi-Factor Decision Logic
 
 When the code includes decisions such as ignore / do not ignore, allow / block, alert / suppress, delete / keep, approve / reject, or continue / stop, the assistant must not reduce the decision to a simple binary flag unless the user explicitly defines it that way.
 
@@ -586,22 +629,30 @@ The assistant must identify which data points influence the decision.
 
 Relevant factors may include:
 
-- source;
-- target;
-- action;
-- old state;
-- new state;
-- timing;
-- actor reliability;
-- repeated pattern;
-- risk;
-- break conditions.
+source;
+
+target;
+
+action;
+
+old state;
+
+new state;
+
+timing;
+
+actor reliability;
+
+repeated pattern;
+
+risk;
+
+break conditions.
 
 The logic must define not only the final decision, but also the reason for the decision.
 
 Example of correct decision shape:
 
-```text
 Ignore only when Process = expected process,
 Path = expected path range,
 Action = expected refresh action,
@@ -609,51 +660,63 @@ ValueName = expected value,
 OldData = expected value,
 NewData = expected value,
 and no break condition is present.
-```
 
 The assistant must avoid broad suppression logic.
 
 When useful, classify events into:
 
-- Ignore;
-- Monitor;
-- Alert;
-- Investigate;
-- Break Condition.
+Ignore;
+
+Monitor;
+
+Alert;
+
+Investigate;
+
+Break Condition.
 
 The assistant must preserve uncertainty when the data does not justify a final suppression or ignore rule.
 
-### 2.10 Validate Real Input Before Designing Decision Logic
+2.11 Validate Real Input Before Designing Decision Logic
 
 When logic depends on interpreting external data, the assistant must determine whether the input is sufficiently understood.
 
 External data includes:
 
-- Windows events;
-- Registry activity;
-- logs;
-- APIs;
-- file formats;
-- network responses;
-- third-party software output.
+Windows events;
+
+Registry activity;
+
+logs;
+
+APIs;
+
+file formats;
+
+network responses;
+
+third-party software output.
 
 The assistant must not assume every input field is understood.
 
 Before finalizing decision logic, the assistant should consider:
 
-- official documentation;
-- reliable technical sources;
-- additional real-world samples;
-- comparison of multiple examples;
-- behavior of the producing software.
+official documentation;
+
+reliable technical sources;
+
+additional real-world samples;
+
+comparison of multiple examples;
+
+behavior of the producing software.
 
 The quality of the decision logic cannot exceed the quality of the input understanding.
 
-### 2.11 Stage 2 Closing Gate
+2.12 Stage 2 Closing Gate
 
-Before moving from logic to code, the assistant should publish:
+Before moving from logic to code, the assistant must publish:
 
-```text
 Logic Status:
 - Input understood: yes / partial / no
 - Output understood: yes / partial / no
@@ -662,69 +725,79 @@ Logic Status:
 - Future-change impact considered: yes / no
 - Real input/output testing needed before code: yes / no
 - User approved logic for implementation: pending / approved
-```
 
 Implementation must not begin until the logic is sufficiently reviewed and the user approves moving forward, unless the user already gave explicit approval to edit, patch, merge, or generate.
 
----
-
-## 3. Stage 3 — Connect Logic to Functions, Variables, and Traceability
+3. Stage 3 — Connect Logic to Functions, Variables, and Traceability
 
 After Stage 1 defines input/output and Stage 2 defines approved logic, the assistant must map the logic into functions, shared state, variable names, and traceability rules.
 
 The goal is to make implementation easy to read and bugs easy to locate.
 
-### 3.1 Function Names and Responsibilities
+3.1 Function Names and Responsibilities
 
 Each proposed function must exist for a clear reason.
 
 A function should be proposed only when it helps with at least one of the following:
 
-- separating a meaningful part of the logic;
-- making the code easier to read;
-- avoiding real duplication;
-- isolating risky or error-prone behavior;
-- making logging clearer;
-- making future changes easier without inflating the code;
-- preserving existing behavior while modifying only the required part.
+separating a meaningful part of the logic;
+
+making the code easier to read;
+
+avoiding real duplication;
+
+isolating risky or error-prone behavior;
+
+making logging clearer;
+
+making future changes easier without inflating the code;
+
+preserving existing behavior while modifying only the required part.
 
 Function names must describe what the function actually does.
 
 Avoid vague names such as:
 
-```text
 HandleData
 ProcessStuff
 DoWork
 RunLogic
 FixIssue
 CheckThings
-```
 
 For each function, the assistant must define:
 
-- responsibility;
-- scope;
-- what it receives;
-- what it returns or changes;
-- side effects;
-- what it must never do.
+responsibility;
 
-### 3.2 Function-to-Logic Mapping
+scope;
+
+what it receives;
+
+what it returns or changes;
+
+side effects;
+
+what it must never do.
+
+3.2 Function-to-Logic Mapping
 
 Each function must map back to approved Stage 2 logic.
 
 The mapping must show:
 
-- which logic step the function implements;
-- which input it uses;
-- which output it produces;
-- which decision point it handles;
-- which failure flow it handles.
+which logic step the function implements;
+
+which input it uses;
+
+which output it produces;
+
+which decision point it handles;
+
+which failure flow it handles.
 
 If a function cannot be mapped to approved logic, it should not be added.
 
-### 3.3 Existing Function Preservation
+3.3 Existing Function Preservation
 
 When modifying existing code, the assistant must first check whether the needed behavior belongs inside an existing function.
 
@@ -732,7 +805,7 @@ Prefer minimal modification to existing functions when that is clearer and safer
 
 Do not introduce a new function if an existing function already has the correct responsibility and can be updated cleanly.
 
-### 3.4 Shared State and Stable Cross-Function Values
+3.4 Shared State and Stable Cross-Function Values
 
 Functions may use local variables.
 
@@ -742,35 +815,45 @@ Reason: when a value is passed from function to function, the variable name ofte
 
 The goal is:
 
-```text
 one stable name for one stable meaning
-```
 
 Local variables are still appropriate for:
 
-- temporary calculations;
-- loop counters;
-- short-lived intermediate values;
-- formatting;
-- values not needed outside the function.
+temporary calculations;
+
+loop counters;
+
+short-lived intermediate values;
+
+formatting;
+
+values not needed outside the function.
 
 Shared/global variables are preferred for:
 
-- script configuration;
-- selected file paths;
-- working folders;
-- loaded input data;
-- parsed event data;
-- current run state;
-- user-selected options;
-- persistent status needed by later functions;
-- values several functions must read consistently.
+script configuration;
+
+selected file paths;
+
+working folders;
+
+loaded input data;
+
+parsed event data;
+
+current run state;
+
+user-selected options;
+
+persistent status needed by later functions;
+
+values several functions must read consistently.
 
 Shared/global variables must be defined clearly near the top of the script.
 
 A function that reads or updates shared state must say so in its function contract.
 
-### 3.5 Variable Name Definition and Suffix Rules
+3.5 Variable Name Definition and Suffix Rules
 
 Variable names must expose what the value holds.
 
@@ -778,16 +861,13 @@ Variable names are not cosmetic. They are part of debugging traceability.
 
 Required suffix rules:
 
-```text
 Name       = value is a name
 FolderName = value is a folder name only
 Path       = value is a full path
 Array      = value is an array or object collection
-```
 
 Examples:
 
-```text
 $ProcessName
 $FileName
 $LogFolderName
@@ -795,23 +875,19 @@ $InputFilePath
 $OutputFilePath
 $EventRecordArray
 $ProcessNameArray
-```
 
 Single-value variables should be named by actual content and logical meaning.
 
 Prefer:
 
-```text
 $CurrentEventRecord
 $RegistryOldData
 $RegistryNewData
 $IgnoreReason
 $AlertMessage
-```
 
 Avoid generic names such as:
 
-```text
 $data
 $value
 $item
@@ -820,7 +896,6 @@ $temp
 $obj
 $thing
 $info
-```
 
 unless the scope is very small and the meaning is immediately obvious.
 
@@ -828,23 +903,20 @@ Boolean names must read like true/false statements.
 
 Prefer:
 
-```text
 $ShouldIgnoreEvent
 $HasRequiredInput
 $IsExpectedProcess
 $CanContinue
 $NeedsUserConfirmation
-```
 
 Avoid cosmetic renaming in bug fixes. Rename only when the current name is misleading, creates confusion, hides logic, or the user explicitly asks for it.
 
-### 3.6 Variable Map
+3.6 Variable Map
 
 Before writing code, the assistant should identify important variables.
 
 The variable map should include:
 
-```text
 Variable Map:
 - Variable name:
 - Scope: local / shared / global
@@ -855,29 +927,25 @@ Variable Map:
 - Related input:
 - Related output:
 - Notes:
-```
 
 This does not need to include every tiny temporary variable.
 
 It must include variables important for understanding script flow.
 
-### 3.7 Debugging Traceability Purpose
+3.7 Debugging Traceability Purpose
 
 The function and variable rules exist to make bugs easy to locate.
 
 When a bug appears, the assistant and user should be able to trace:
 
-```text
 Input → Output → Logic Step → Function Responsibility → Variable Name → Code Line
-```
 
 Debugging should begin from a known logic step and move directly to the responsible function and variable, instead of requiring a full manual search through the script.
 
-### 3.8 Function Contract Summary
+3.8 Function Contract Summary
 
 Before code is written, the assistant should present:
 
-```text
 Function Contract:
 - Function name:
 - Purpose:
@@ -890,81 +958,92 @@ Function Contract:
 - Failure behavior:
 - Logging responsibility:
 - Should not do:
-```
 
-### 3.9 Stage 3 Completion Rule
+3.9 Stage 3 Completion Rule
 
 The assistant must not start writing code until the function map, shared-state plan, variable-name plan, and traceability path are clear enough to show how the approved logic will be implemented.
 
 Implementation must not begin until the user approves moving forward, unless the user already gave explicit approval to generate or patch code.
 
----
-
-## 4. Bug-Fix Workflow
+4. Bug-Fix Workflow
 
 This section applies when the user asks to debug, fix, patch, or investigate broken behavior.
 
 Before giving replacement code for a bug fix, the assistant must provide:
 
-1. Original function/block.
-2. Exact current behavior.
-3. Why it fails.
-4. Proposed change.
-5. Regression risks.
-6. Checks the assistant can do here.
-7. Checks only the user can do locally.
-8. Only then, the replacement block.
+Original function/block.
 
-### 4.1 Root Cause Requirement
+Exact current behavior.
+
+Why it fails.
+
+Proposed change.
+
+Regression risks.
+
+Checks the assistant can do here.
+
+Checks only the user can do locally.
+
+Only then, the replacement block.
+
+4.1 Root Cause Requirement
 
 Every bug-fix answer must identify:
 
-- why the bug happens;
-- where it happens;
-- how the fix solves it.
+why the bug happens;
+
+where it happens;
+
+how the fix solves it.
 
 If the root cause is not proven, the assistant must say what is proven, what is likely, and what remains unverified.
 
 The assistant must not present a speculative fix as certain.
 
-### 4.2 Minimal Patch Rule
+4.2 Minimal Patch Rule
 
 For active bug repairs, apply the smallest safe change that fixes the approved problem.
 
 Do not add optional improvements, large refactors, new architecture, or cosmetic changes unless the user explicitly approves them.
 
-### 4.3 Regression Risk Review
+4.3 Regression Risk Review
 
 Before publishing code, the assistant must identify likely regression risks.
 
 Regression risk review should include:
 
-- existing behavior that must remain unchanged;
-- related functions that may be affected;
-- existing logs that may change;
-- data files, paths, state, or external behavior that may be affected.
+existing behavior that must remain unchanged;
 
-### 4.4 Local Verification Split
+related functions that may be affected;
+
+existing logs that may change;
+
+data files, paths, state, or external behavior that may be affected.
+
+4.4 Local Verification Split
 
 The assistant must distinguish between:
 
-- checks that can be performed inside the chat environment;
-- checks that require the user's local machine, logs, UI, permissions, installed tools, or real runtime environment.
+checks that can be performed inside the chat environment;
+
+checks that require the user's local machine, logs, UI, permissions, installed tools, or real runtime environment.
 
 Do not pretend a local runtime check was performed when it was not.
 
----
-
-## 5. Logging Protocol — Mandatory Strict Icoding Logger
+5. Logging Protocol — Mandatory Strict Icoding Logger
 
 All new or touched logging must use a strict logger.
 
 Every log event must include:
 
-- timestamp;
-- caller function name;
-- caller code line number;
-- message/event text.
+timestamp;
+
+caller function name;
+
+caller code line number;
+
+message/event text.
 
 The logger helper must automatically add caller function name and caller line number.
 
@@ -974,94 +1053,91 @@ Do not accept logger code that logs only timestamp + message.
 
 Do not accept logger code that requires calls like:
 
-```powershell
 Write-DebugLine "$(Get-LineNumber) Entering SomeFunction"
-```
 
 Correct PowerShell usage shape:
 
-```powershell
 Write-DebugLine "Entering Get-Data | Path=[$InputFilePath]"
 Write-DebugLine "Doing step X"
 Write-DebugLine "Exiting Get-Data"
-```
 
-### 5.1 PowerShell Logger Requirement
+5.1 PowerShell Logger Requirement
 
-For PowerShell, `Write-DebugLine` or an equivalent helper must use the call stack or an approved caller-info helper so touched logs include caller function and script line number automatically.
-
-Required behavior:
-
-```text
-[timestamp] [LEVEL] [caller_function:caller_line] message
-```
-
-### 5.2 Python Logger Requirement
-
-For Python, `log_line()` must inspect the caller frame and add caller function name and caller line number automatically.
+For PowerShell, Write-DebugLine or an equivalent helper must use the call stack or an approved caller-info helper so touched logs include caller function and script line number automatically.
 
 Required behavior:
 
-```text
 [timestamp] [LEVEL] [caller_function:caller_line] message
-```
 
-### 5.3 JavaScript Logger Requirement
+5.2 Python Logger Requirement
+
+For Python, log_line() must inspect the caller frame and add caller function name and caller line number automatically.
+
+Required behavior:
+
+[timestamp] [LEVEL] [caller_function:caller_line] message
+
+5.3 JavaScript Logger Requirement
 
 For JavaScript, the logging helper must add caller context when practical, or the code must use an approved wrapper pattern that guarantees useful function and line context.
 
-### 5.4 Logging Inputs and Outputs
+5.4 Logging Inputs and Outputs
 
 For debugging and important execution paths, log the important input side and output side.
 
 Input-side logs may include:
 
-- file names;
-- function or method entry;
-- command intent;
-- relevant variables;
-- relevant state.
+file names;
+
+function or method entry;
+
+command intent;
+
+relevant variables;
+
+relevant state.
 
 Output-side logs may include:
 
-- responses;
-- returned states;
-- thrown errors;
-- retry results;
-- failure results.
+responses;
+
+returned states;
+
+thrown errors;
+
+retry results;
+
+failure results.
 
 Do not log secrets, tokens, passwords, private keys, full cookies, or unnecessary personal data.
 
-### 5.5 Comments Plus Logs
+5.5 Comments Plus Logs
 
 Every important step must have:
 
-- a comment;
-- a log line.
+a comment;
+
+a log line.
 
 The log line must use the approved strict logger helper.
 
 The assistant must not create noisy logs for trivial internal operations. The goal is useful debugging, not log spam.
 
-### 5.6 Existing Logs
+5.6 Existing Logs
 
 If touched logs do not include caller function and line number, fix them.
 
 Existing logs outside the touched area should not be rewritten only for style unless the user approves a broad logger upgrade.
 
----
-
-## 6. Function Structure Rule
+6. Function Structure Rule
 
 Each function must include a purpose block.
 
 Required structure:
 
-```text
 Purpose: Describe function.
 Params : Describe parameters.
 Return : Describe return value.
-```
 
 For PowerShell, this should usually be a comment-based block inside or immediately above the function.
 
@@ -1069,9 +1145,7 @@ For Python, this should usually be a docstring.
 
 The function description must match the Stage 3 function contract.
 
----
-
-## 7. Structured Data Comparison Rule
+7. Structured Data Comparison Rule
 
 When comparing structured data, such as objects, arrays, lists, hashtables, dictionaries, or multi-field records, the preferred future design is to create a stable fingerprint/hash at assignment, capture, creation, or save time.
 
@@ -1087,7 +1161,6 @@ Do not include volatile fields unless they are intentionally part of the identit
 
 Volatile fields usually include:
 
-```text
 Timestamp
 LogTimestamp
 RawTimestamp
@@ -1096,15 +1169,12 @@ temporary index
 runtime-only file name
 session-only values
 random IDs
-```
 
 Required priority:
 
-```text
 1. Preferred: fingerprint/hash created at assignment/capture/save time.
 2. Acceptable: explicit field-by-field comparison when no fingerprint/hash was prepared.
 3. Not acceptable for persistent/reloaded data: raw object reference comparison.
-```
 
 Retrofit rule:
 
@@ -1112,13 +1182,11 @@ Do not retrofit a new fingerprint/hash layer into an active repair or refactor u
 
 If the current implementation already uses explicit field-by-field comparison and there are open fixes in progress, finish the current repair first. Mark fingerprint/hash comparison as future cleanup instead of changing architecture mid-repair.
 
----
-
-## 8. Code Readability Rule
+8. Code Readability Rule
 
 Prefer simple, readable logic.
 
-Nested `if` statements are allowed when they make the logic easier to follow.
+Nested if statements are allowed when they make the logic easier to follow.
 
 Debuggability is more important than cleverness.
 
@@ -1126,49 +1194,57 @@ Logger helpers must be boring, explicit, and easy to verify.
 
 The assistant must follow the user's naming/readability system even when common platform conventions would choose shorter names.
 
----
-
-## 9. Code Replacement Rule
+9. Code Replacement Rule
 
 When replacing code during a bug fix or modification, provide:
 
-1. old code location or old code block;
-2. line numbers when available;
-3. new replacement code as a clean copy/paste block;
-4. explanation of what changed;
-5. explanation of what did not change.
+old code location or old code block;
+
+line numbers when available;
+
+new replacement code as a clean copy/paste block;
+
+explanation of what changed;
+
+explanation of what did not change.
 
 Do not mix old and new code in a way that makes copy/paste unsafe.
 
----
-
-## 10. Verification Before Delivery
+10. Verification Before Delivery
 
 Before publishing code or a code-related instruction file, the assistant must run three checks where possible.
 
-### 10.1 Syntax / Format Check
+10.1 Syntax / Format Check
 
 For code, check syntax when possible.
 
 For Markdown instruction files, check:
 
-- heading structure;
-- code fences;
-- required sections;
-- broken obvious formatting.
+heading structure;
 
-### 10.2 Logic / Coverage Review
+code fences;
+
+required sections;
+
+broken obvious formatting.
+
+10.2 Logic / Coverage Review
 
 Review whether the output covers:
 
-- input/output definition;
-- logic flow;
-- function and variable traceability;
-- debugging workflow;
-- logging requirements;
-- delivery requirements.
+input/output definition;
 
-### 10.3 Error Logging / Diagnostic Review
+logic flow;
+
+function and variable traceability;
+
+debugging workflow;
+
+logging requirements;
+
+delivery requirements.
+
+10.3 Error Logging / Diagnostic Review
 
 For code, verify that important failure paths include useful strict logs.
 
@@ -1176,39 +1252,61 @@ For instruction files, verify that logging requirements are present and not cont
 
 If a check cannot be run in the chat environment, state that clearly.
 
----
-
-## 11. Delivery Rules
+11. Delivery Rules
 
 When delivering files, the assistant must:
 
-1. provide the download link first;
-2. verify the file exists;
-3. re-check the file content;
-4. publish a concise canvas-style summary containing:
-   - filename;
-   - version;
-   - changed sections;
-   - verification status.
+provide the download link first;
+
+verify the file exists;
+
+re-check the file content;
+
+publish a concise canvas-style summary containing:
+
+filename;
+
+version;
+
+changed sections;
+
+verification status.
 
 Do not claim local execution or local runtime success unless it actually happened.
 
----
-
-## 12. Knowledge Tracking
+12. Knowledge Tracking
 
 During coding/debugging work, track:
 
-- what worked;
-- what failed;
-- which logs were upgraded to strict caller function + line number format;
-- which assumptions were used;
-- which checks were performed;
-- which checks require the user's local environment.
+what worked;
 
----
+what failed;
 
-## Final Rule
+which logs were upgraded to strict caller function + line number format;
+
+which assumptions were used;
+
+which checks were performed;
+
+which checks require the user's local environment.
+
+13. Core Execution Summary
+
+Use this sequence as the default navigation map for coding work:
+
+Request
+→ Read applicable instructions and recovery file
+→ Define Input / Output
+→ Define and review logic
+→ Map controllers / functions / variables / shared state
+→ Obtain user approval when required
+→ Implement
+→ Verify syntax / logic / diagnostics
+→ Deliver
+→ Update recovery file when project state changed
+
+If the task is a bug fix, apply the Bug-Fix Workflow within this sequence before replacement code is published.
+
+14. Final Rule
 
 Use simple code, strong strict logging, stable names, clear logic, minimal necessary changes, and no unstated assumptions.
-
