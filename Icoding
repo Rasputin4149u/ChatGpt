@@ -30,6 +30,314 @@ It applies to:
 - correcting previous assistant output;
 - refactoring only when explicitly approved by the user.
 
+# Project Recovery File Rule
+
+## Purpose
+
+When a project has a persistent recovery / design / progress text file, that file is the authoritative project record for resuming work.
+
+The file must contain enough information to continue the project later without relying on conversation memory.
+
+The file is not only a summary. It is also a chronological engineering record of:
+
+* approved design decisions;
+* architecture and controller hierarchy;
+* function responsibilities;
+* variables and shared state;
+* storage decisions;
+* logging/debugging rules;
+* unresolved questions;
+* rejected alternatives;
+* superseded decisions;
+* mistakes and corrections;
+* implementation status;
+* important testing results;
+* workflow/process improvements.
+
+---
+
+## Mandatory Update Rule
+
+Whenever a meaningful project decision is made, the recovery file must be updated.
+
+This includes:
+
+* adding a new decision;
+* modifying an existing decision;
+* replacing a previous design;
+* renaming controllers, functions, variables, files, or components;
+* changing hierarchy or responsibility;
+* changing Input / Output;
+* changing storage behavior;
+* changing logging/debugging behavior;
+* resolving an OPEN item;
+* creating a new OPEN item;
+* identifying a mistake;
+* correcting a previous assumption;
+* approving or rejecting a proposed design;
+* completing an implementation or test milestone.
+
+Minor conversational discussion that does not change the project state does not need to be recorded.
+
+---
+
+## Preserve History
+
+Do not silently overwrite historical decisions.
+
+When an earlier decision is replaced, preserve the previous entry and add a new entry describing the change.
+
+Use statuses such as:
+
+```text
+DECISION
+OPEN_DESIGN
+OPEN_STORAGE
+IMPLEMENTED
+TESTED
+MISTAKE
+CORRECTION
+SUPERSEDED
+PROCESS_NOTE
+```
+
+Example:
+
+```text
+SUPERSEDED | ResultController renamed to GoogleFilteringController because the controller owns the complete Google filtering domain rather than only result collection.
+```
+
+The newest applicable decision is the current authoritative state.
+
+---
+
+## Append / Update / Change Rules
+
+### Add
+
+When a new subject or decision is introduced:
+
+```text
+ADD
+→ append a new timestamped entry
+→ do not modify unrelated existing entries
+```
+
+### Update
+
+When additional information extends an existing decision without invalidating it:
+
+```text
+UPDATE
+→ append a new timestamped entry describing the additional information
+→ preserve the original entry
+```
+
+### Change
+
+When a previous decision is replaced:
+
+```text
+CHANGE
+→ preserve the old entry
+→ mark the old concept as SUPERSEDED when appropriate
+→ append the new authoritative decision
+→ state what changed and why
+```
+
+Do not rewrite project history merely to make the file look cleaner.
+
+---
+
+## Timestamp Rule
+
+Every project-record entry must begin with a timestamp including milliseconds.
+
+Preferred format:
+
+```text
+YYYY-MM-DDTHH:mm:ss.SSS±HH:mm
+```
+
+Example:
+
+```text
+2026-09-10T12:37:00.000+03:00 | DECISION | ...
+```
+
+The timestamp identifies the chronological order of decisions.
+
+---
+
+## Current State Must Be Recoverable
+
+After every meaningful update, the recovery file must make it possible to determine:
+
+```text
+What are we building?
+What has already been decided?
+What architecture is currently approved?
+What functions/controllers exist or are planned?
+What variables/state are shared?
+What remains open?
+What decisions were superseded?
+What has been implemented?
+What has been tested?
+What is the next logical step?
+```
+
+If any of these cannot be reconstructed from the file, the recovery record is incomplete.
+
+---
+
+## Controller and Function Changes
+
+Architecture changes must be recorded explicitly.
+
+For example:
+
+```text
+DECISION | Start is the main controller.
+DECISION | LogController owns logging-domain decisions.
+DECISION | GoogleFilteringController owns the complete Google-result filtering workflow.
+```
+
+When responsibility moves between functions/controllers, record:
+
+```text
+old owner
+new owner
+reason for change
+```
+
+This is especially important for debugging.
+
+---
+
+## Open Items
+
+Unresolved issues must remain explicitly marked.
+
+Example:
+
+```text
+OPEN_DESIGN | Exact MutationObserver behavior not yet finalized.
+```
+
+When resolved, do not simply delete the open item.
+
+Add:
+
+```text
+DECISION | MutationObserver behavior finalized as ...
+SUPERSEDED | Previous OPEN_DESIGN item is now resolved.
+```
+
+---
+
+## Mistakes and Corrections
+
+Mistakes that influenced the project design must be preserved.
+
+Example:
+
+```text
+MISTAKE | A separate MainController was proposed even though Start was already defined as the main controller.
+
+CORRECTION | Start remains the main controller; no separate MainController is required.
+```
+
+The purpose is not blame. The purpose is to prevent the same design mistake from being repeated.
+
+---
+
+## Process Notes
+
+The recovery file may also record improvements to the way the project is being designed or debugged.
+
+Example:
+
+```text
+PROCESS_NOTE | Keeping result discovery and filtering under one controller reduces unnecessary handoffs and shared-state complexity.
+```
+
+These notes help improve future projects and debugging strategy.
+
+---
+
+## Minimal-Change Rule
+
+When updating the recovery file:
+
+* preserve all unrelated existing content;
+* do not remove valid historical entries;
+* do not reorganize the entire file unless explicitly requested;
+* do not silently rewrite earlier decisions;
+* modify only what is required to record the new project state.
+
+---
+
+## Recovery Priority Rule
+
+When resuming a project after a break, new chat, context loss, or memory uncertainty:
+
+```text
+1. Read the recovery file.
+2. Reconstruct the current authoritative state.
+3. Identify unresolved OPEN items.
+4. Identify the last completed design/implementation step.
+5. Continue from the next logical step.
+```
+
+Do not ask the user to remember information that is already recorded in the recovery file.
+
+If the recovery file conflicts with conversational memory, prefer the latest explicit project-file decision unless the user states otherwise.
+
+---
+
+## User Approval and File Update
+
+A discussion or proposal should not be recorded as an approved design merely because it was suggested.
+
+Use:
+
+```text
+PROPOSED
+```
+
+until the user approves it.
+
+After approval:
+
+```text
+DECISION
+```
+
+may be recorded.
+
+If the user explicitly instructs that project files should be updated automatically after agreed decisions, the assistant should update the recovery file without requiring a separate reminder each time.
+
+---
+
+## Core Principle
+
+The recovery file must function as:
+
+```text
+project backup
++
+current design state
++
+decision history
++
+debugging map
++
+resume point
+```
+
+Its purpose is that neither the user nor the assistant should need to reconstruct the project from memory.
+
+
 The assistant must not treat this protocol as relevant only to new code.
 
 When working on existing code, the assistant must preserve the user's minimal-change preference and apply changes only to the touched area unless the user explicitly approves broader changes.
