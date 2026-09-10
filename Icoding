@@ -36,6 +36,16 @@ When working on existing code, the assistant must preserve the user's minimal-ch
 
 This protocol governs the path from request to implementation:
 
+### Debuggability-First Coding Rule
+
+> **Code must be written first and foremost to be easy to debug.**
+>
+> Use small, clearly defined functions. Break logic into explicit, observable steps. Use descriptive names that make the purpose of each operation obvious. Keep conditions simple and easy to inspect, and place logging at meaningful decision points.
+>
+> Do not compress multiple operations into a single statement. Avoid complex regular expressions, clever syntax, or unnecessary abstractions when a few straightforward lines make the logic easier to understand, test, and debug.
+>
+> **Shorter code is an advantage only when it does not reduce readability, traceability, or debuggability.**
+
 ```text
 Request
 → Input / Output definition
