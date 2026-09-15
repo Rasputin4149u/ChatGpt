@@ -451,7 +451,8 @@ comparisons;
 
 loops;
 
-user choices;
+Mandatory user choices;
+any  Input or Outpt Files paths and names
 
 default behavior when the situation is unclear.
 
